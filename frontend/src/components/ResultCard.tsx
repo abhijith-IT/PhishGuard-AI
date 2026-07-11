@@ -1,4 +1,16 @@
-function ResultCard() {
+type ResultCardProps = {
+  risk: string;
+  confidence: string;
+  recommendation: string;
+  reasons: string[];
+};
+
+function ResultCard({
+  risk,
+  confidence,
+  recommendation,
+  reasons,
+}: ResultCardProps) {
   return (
     <div
       style={{
@@ -9,14 +21,27 @@ function ResultCard() {
     >
       <h2>Threat Analysis</h2>
 
-      <p><strong>Risk:</strong> 🔴 High</p>
-
-      <p><strong>Confidence:</strong> 96%</p>
+      <p>
+        <strong>Risk:</strong> {risk}
+      </p>
 
       <p>
-        Suspicious sender, urgent language,
-        possible phishing attempt.
+        <strong>Confidence:</strong> {confidence}
       </p>
+
+      <h3>Reasons</h3>
+
+      <ul>
+        {reasons.map((reason, index) => (
+          <li key={index}>{reason}</li>
+        ))}
+      </ul>
+
+      <p>
+        <strong>Recommendation:</strong>
+      </p>
+
+      <p>{recommendation}</p>
     </div>
   );
 }
