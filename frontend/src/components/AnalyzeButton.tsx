@@ -1,6 +1,10 @@
-function AnalyzeButton() {
+type AnalyzeButtonProps = {
+  onClick: () => void;
+};
+
+function AnalyzeButton({ onClick }: AnalyzeButtonProps) {
   return (
-    <button>
+    <button onClick={onClick}>
       Analyze Threat
     </button>
   );
