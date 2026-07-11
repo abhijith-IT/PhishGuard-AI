@@ -1,3 +1,4 @@
+import Loading from "./components/Loading";
 import { useState } from "react";
 import Header from "./components/Header";
 import InputBox from "./components/InputBox";
@@ -11,7 +12,9 @@ function App() {
 const [confidence, setConfidence] = useState("");
 const [recommendation, setRecommendation] = useState("");
 const [reasons, setReasons] = useState<string[]>([]);
+const [loading, setLoading] = useState(false);
  const analyzeThreat = async () => {
+  setLoading(true);
   try {
     const response = await fetch("http://127.0.0.1:8000/analyze", {
       method: "POST",
@@ -24,14 +27,17 @@ const [reasons, setReasons] = useState<string[]>([]);
     });
 
     const data = await response.json();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     console.log(data);
 
     setRisk(data.risk);
     setConfidence(data.confidence);
     setReasons(data.reason);
     setRecommendation(data.recommendation);
+    setLoading(false);
 
   } catch (error) {
+    setLoading(false);
     console.error(error);
     alert("Backend not reachable");
   }
@@ -51,12 +57,16 @@ const [reasons, setReasons] = useState<string[]>([]);
           onClick={analyzeThreat}
         />
 
-       <ResultCard
-  risk={risk}
-  confidence={confidence}
-  recommendation={recommendation}
-  reasons={reasons}
-/>
+      {loading ? (
+    <Loading />
+) : (
+    <ResultCard
+        risk={risk}
+        confidence={confidence}
+        recommendation={recommendation}
+        reasons={reasons}
+    />
+)}
       </div>
     </div>
   );

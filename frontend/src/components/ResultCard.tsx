@@ -1,3 +1,5 @@
+import RiskBadge from "./RiskBadge";
+import ProgressBar from "./ProgressBar";
 type ResultCardProps = {
   risk: string;
   confidence: string;
@@ -21,21 +23,23 @@ function ResultCard({
     >
       <h2>Threat Analysis</h2>
 
-      <p>
-        <strong>Risk:</strong> {risk}
-      </p>
+      <RiskBadge risk={risk} />
 
-      <p>
-        <strong>Confidence:</strong> {confidence}
-      </p>
-
+      <ProgressBar confidence={confidence} />
       <h3>Reasons</h3>
 
-      <ul>
-        {reasons.map((reason, index) => (
-          <li key={index}>{reason}</li>
-        ))}
-      </ul>
+      <ul style={{ paddingLeft: "20px" }}>
+      {reasons.map((reason, index) => (
+    <li
+      key={index}
+      style={{
+        marginBottom: "8px",
+      }}
+    >
+      ✅ {reason}
+    </li>
+  ))}
+  </ul>
 
       <p>
         <strong>Recommendation:</strong>
