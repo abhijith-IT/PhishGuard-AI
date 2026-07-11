@@ -5,6 +5,9 @@ import InputBox from "./components/InputBox";
 import AnalyzeButton from "./components/AnalyzeButton";
 import ResultCard from "./components/ResultCard";
 import "./App.css";
+import History from "./components/History";
+import FileUpload from "./components/FileUpload";
+import DownloadButton from "./components/DownloadButton";
 
 function App() {
   const [text, setText] = useState("");
@@ -47,6 +50,9 @@ const [loading, setLoading] = useState(false);
     <div className="container">
       <div className="card">
         <Header />
+        <FileUpload
+        onFileRead={setText}
+      />
 
         <InputBox
           value={text}
@@ -56,19 +62,23 @@ const [loading, setLoading] = useState(false);
         <AnalyzeButton
           onClick={analyzeThreat}
         />
-
+      <DownloadButton />
       {loading ? (
     <Loading />
 ) : (
+  <>
     <ResultCard
         risk={risk}
         confidence={confidence}
         recommendation={recommendation}
         reasons={reasons}
     />
+    <History />
+    </>
 )}
       </div>
     </div>
+    
   );
 }
 

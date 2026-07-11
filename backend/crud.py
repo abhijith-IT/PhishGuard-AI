@@ -22,3 +22,24 @@ def create_analysis(db: Session, analysis):
 def get_analysis(db: Session):
 
     return db.query(models.Analysis).all()
+
+def save_analysis(
+    db: Session,
+    message: str,
+    risk: str,
+    confidence: str,
+    recommendation: str,
+):
+
+    analysis = models.Analysis(
+        message=message,
+        risk=risk,
+        confidence=confidence,
+        recommendation=recommendation,
+    )
+
+    db.add(analysis)
+    db.commit()
+    db.refresh(analysis)
+
+    return analysis

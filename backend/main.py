@@ -10,6 +10,9 @@ from detector import detect_phishing
 from database import SessionLocal
 from database import engine
 
+from fastapi.responses import FileResponse
+from report import generate_report
+
 app = FastAPI()
 
 models.Base.metadata.create_all(bind=engine)
@@ -34,7 +37,22 @@ def home():
 
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
-    return detect_phishing(request.text)
+
+    result = detect_phishing(request.text)
+
+    db = SessionLocal()
+
+    crud.save_analysis(
+        db=db,
+        message=request.text,
+        risk=result["risk"],
+        confidence=result["confidence"],
+        recommendation=result["recommendation"],
+    )
+
+    db.close()
+
+    return result
 
 
 @app.get("/history")
@@ -47,3 +65,24 @@ def history():
     db.close()
 
     return data
+@app.get("/download-report")
+def download_report():
+
+    data = {
+        "risk": "Sample Risk",
+        "confidence": "95%",
+        "reason": [
+            "Suspicious URL",
+            "Password request",
+            "Urgent language"
+        ],
+        "recommendation": "Do not click the link."
+    }
+
+    file = generate_report(data)
+
+    return FileResponse(
+        file,
+        media_type="application/pdf",
+        filename="PhishGuard_Report.pdf"
+    )
