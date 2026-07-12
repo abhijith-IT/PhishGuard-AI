@@ -18,7 +18,7 @@ function History() {
 
   return (
     <div style={{ marginTop: "40px" }}>
-      <h2>Previous Analyses</h2>
+      <h2> Analysis History</h2>
 
       {history.map((item) => (
         <div

@@ -1,21 +1,37 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from dotenv import load_dotenv
+from google import genai
+
+import os
+import json
 
 import models
 import crud
 
 from detector import detect_phishing
-
-from database import SessionLocal
-from database import engine
-
+from database import SessionLocal, engine
 from fastapi.responses import FileResponse
 from report import generate_report
+
+# ----------------------------
+# App Initialization
+# ----------------------------
 
 app = FastAPI()
 
 models.Base.metadata.create_all(bind=engine)
+
+load_dotenv()
+
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
+
+# ----------------------------
+# CORS
+# ----------------------------
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,20 +41,78 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ----------------------------
+# Request Model
+# ----------------------------
 
 class AnalyzeRequest(BaseModel):
     text: str
 
+# ----------------------------
+# Home
+# ----------------------------
 
 @app.get("/")
 def home():
     return {"message": "PhishGuard Backend Running"}
 
+# ----------------------------
+# Analyze
+# ----------------------------
 
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
 
-    result = detect_phishing(request.text)
+    prompt = f"""
+You are an expert cybersecurity analyst.
+
+Analyze the following email, SMS, or URL for phishing.
+
+Return ONLY valid JSON.
+
+Format:
+
+{{
+  "risk": "...",
+  "confidence": "Return a percentage such as 95%, 82%, or 30%",
+  "reason": [
+      "...",
+      "...",
+      "..."
+  ],
+  "recommendation": "..."
+}}
+
+Message:
+
+{request.text}
+"""
+
+    try:
+
+        response = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=prompt,
+        )
+
+        text = response.text.strip()
+
+        if text.startswith("```json"):
+            text = text.replace("```json", "").replace("```", "").strip()
+
+        elif text.startswith("```"):
+            text = text.replace("```", "").strip()
+
+        result = json.loads(text)
+
+    except Exception as e:
+
+        print("Gemini Error:", e)
+
+        # Fallback to rule-based detector
+        result = detect_phishing(request.text)
+
+    # Save to Database
 
     db = SessionLocal()
 
@@ -54,6 +128,9 @@ def analyze(request: AnalyzeRequest):
 
     return result
 
+# ----------------------------
+# History
+# ----------------------------
 
 @app.get("/history")
 def history():
@@ -65,6 +142,11 @@ def history():
     db.close()
 
     return data
+
+# ----------------------------
+# Download PDF
+# ----------------------------
+
 @app.get("/download-report")
 def download_report():
 
@@ -73,10 +155,10 @@ def download_report():
         "confidence": "95%",
         "reason": [
             "Suspicious URL",
-            "Password request",
-            "Urgent language"
+            "Password Request",
+            "Urgent Language"
         ],
-        "recommendation": "Do not click the link."
+        "recommendation": "Do not click any links."
     }
 
     file = generate_report(data)
