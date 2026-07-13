@@ -16,6 +16,7 @@ const [confidence, setConfidence] = useState("");
 const [recommendation, setRecommendation] = useState("");
 const [reasons, setReasons] = useState<string[]>([]);
 const [loading, setLoading] = useState(false);
+const [analysisSource, setAnalysisSource] = useState("");
  const analyzeThreat = async () => {
   setLoading(true);
   try {
@@ -37,6 +38,7 @@ const [loading, setLoading] = useState(false);
     setConfidence(data.confidence);
     setReasons(data.reason);
     setRecommendation(data.recommendation);
+    setAnalysisSource(data.analysis_source ?? "");
     setLoading(false);
 
   } catch (error) {
@@ -62,7 +64,14 @@ const [loading, setLoading] = useState(false);
         <AnalyzeButton
           onClick={analyzeThreat}
         />
-      <DownloadButton />
+      <DownloadButton
+          message={text}
+          risk={risk}
+          confidence={confidence}
+          reasons={reasons}
+          recommendation={recommendation}
+          source={analysisSource}
+      />
       {loading ? (
     <Loading />
 ) : (

@@ -1,19 +1,31 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from dotenv import load_dotenv
-from google import genai
+
+load_dotenv()  # Must run before any os.getenv() calls
+
+from fastapi import FastAPI, Depends, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, field_validator
+from google import genai  # type: ignore[import-untyped]
+from google.genai import errors as genai_errors  # type: ignore[import-untyped]
 
 import os
 import json
+import logging
+import time
+from datetime import datetime, timezone
+from typing import List
 
 import models
 import crud
 
+from sqlalchemy.orm import Session
+
 from detector import detect_phishing
-from database import SessionLocal, engine
+from database import engine, get_db
 from fastapi.responses import FileResponse
 from report import generate_report
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------
 # App Initialization
@@ -23,11 +35,100 @@ app = FastAPI()
 
 models.Base.metadata.create_all(bind=engine)
 
-load_dotenv()
+# ----------------------------
+# Startup Validation
+# ----------------------------
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+api_key = os.getenv("GEMINI_API_KEY")
+
+if not api_key:
+    raise RuntimeError(
+        "GEMINI_API_KEY is not set. "
+        "Add it to your .env file: GEMINI_API_KEY=your_key_here"
+    )
+
+client = genai.Client(api_key=api_key)
+
+# ----------------------------
+# Gemini Model Priority
+# ----------------------------
+
+GEMINI_MODELS = [
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-2.0-flash",
+]
+
+# ----------------------------
+# Gemini Resilient Call
+# ----------------------------
+
+def call_gemini_with_retry(prompt: str) -> dict | None:
+
+    for model in GEMINI_MODELS:
+
+        for attempt in range(1, 4):
+
+            logger.info("Gemini attempt %d/3 with model '%s'", attempt, model)
+
+            try:
+
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                )
+
+                text = (response.text or "").strip()
+
+                if text.startswith("```json"):
+                    text = text.replace("```json", "").replace("```", "").strip()
+                elif text.startswith("```"):
+                    text = text.replace("```", "").strip()
+
+                result = json.loads(text)
+
+                logger.info("Gemini success with model '%s'", model)
+
+                return result
+
+            except genai_errors.ServerError as e:
+
+                if e.code == 503:
+
+                    if attempt < 3:
+                        wait = 2 ** attempt
+                        logger.warning(
+                            "Gemini 503 on '%s' attempt %d/3 — retrying in %ds",
+                            model, attempt, wait,
+                        )
+                        time.sleep(wait)
+
+                    else:
+                        logger.warning(
+                            "Gemini '%s' failed after 3 attempts — trying next model",
+                            model,
+                        )
+
+                else:
+                    logger.error(
+                        "Gemini non-retryable server error on '%s': %s",
+                        model, e,
+                    )
+                    break
+
+            except Exception as e:
+                logger.error(
+                    "Gemini non-retryable error on '%s': %s",
+                    model, e,
+                )
+                break
+
+    logger.warning(
+        "All Gemini models failed after retries — "
+        "switching to rule-based detector"
+    )
+
+    return None
 
 # ----------------------------
 # CORS
@@ -46,7 +147,18 @@ app.add_middleware(
 # ----------------------------
 
 class AnalyzeRequest(BaseModel):
-    text: str
+    text: str = Field(
+        min_length=1,
+        max_length=5000,
+        description="The email, SMS, or URL text to analyze for phishing.",
+    )
+
+    @field_validator("text")
+    @classmethod
+    def text_must_not_be_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("text must not be empty or whitespace only")
+        return v
 
 # ----------------------------
 # Home
@@ -61,7 +173,7 @@ def home():
 # ----------------------------
 
 @app.post("/analyze")
-def analyze(request: AnalyzeRequest):
+def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
 
     prompt = f"""
 You are an expert cybersecurity analyst.
@@ -88,33 +200,15 @@ Message:
 {request.text}
 """
 
-    try:
+    result = call_gemini_with_retry(prompt)
 
-        response = client.models.generate_content(
-            model="gemini-3.5-flash",
-            contents=prompt,
-        )
-
-        text = response.text.strip()
-
-        if text.startswith("```json"):
-            text = text.replace("```json", "").replace("```", "").strip()
-
-        elif text.startswith("```"):
-            text = text.replace("```", "").strip()
-
-        result = json.loads(text)
-
-    except Exception as e:
-
-        print("Gemini Error:", e)
-
-        # Fallback to rule-based detector
+    if result is None:
         result = detect_phishing(request.text)
+        result["analysis_source"] = "Rule-Based Detector"
+    else:
+        result["analysis_source"] = "Gemini AI"
 
     # Save to Database
-
-    db = SessionLocal()
 
     crud.save_analysis(
         db=db,
@@ -124,8 +218,6 @@ Message:
         recommendation=result["recommendation"],
     )
 
-    db.close()
-
     return result
 
 # ----------------------------
@@ -133,38 +225,52 @@ Message:
 # ----------------------------
 
 @app.get("/history")
-def history():
-
-    db = SessionLocal()
+def history(db: Session = Depends(get_db)):
 
     data = crud.get_analysis(db)
 
-    db.close()
-
     return data
+
+# ----------------------------
+# Download Request Model
+# ----------------------------
+
+class DownloadRequest(BaseModel):
+    message: str = Field(
+        min_length=1,
+        max_length=5000,
+        description="The original message that was analyzed.",
+    )
+    risk: str
+    confidence: str
+    reasons: List[str]
+    recommendation: str
+    source: str
 
 # ----------------------------
 # Download PDF
 # ----------------------------
 
-@app.get("/download-report")
-def download_report():
+@app.post("/download-report")
+def download_report(request: DownloadRequest, background_tasks: BackgroundTasks):
 
     data = {
-        "risk": "Sample Risk",
-        "confidence": "95%",
-        "reason": [
-            "Suspicious URL",
-            "Password Request",
-            "Urgent Language"
-        ],
-        "recommendation": "Do not click any links."
+        "message":        request.message,
+        "risk":           request.risk,
+        "confidence":     request.confidence,
+        "reason":         request.reasons,
+        "recommendation": request.recommendation,
+        "source":         request.source,
+        "timestamp":      datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
     }
 
     file = generate_report(data)
 
+    background_tasks.add_task(os.remove, file)
+
     return FileResponse(
         file,
         media_type="application/pdf",
-        filename="PhishGuard_Report.pdf"
+        filename="PhishGuard_Report.pdf",
+        background=background_tasks,
     )
