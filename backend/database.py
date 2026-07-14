@@ -1,9 +1,10 @@
 from collections.abc import Generator
+import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-DATABASE_URL = "sqlite:///./phishguard.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./phishguard.db")
 
 engine = create_engine(
     DATABASE_URL,

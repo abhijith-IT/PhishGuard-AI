@@ -17,7 +17,7 @@ function History({ refreshKey }: HistoryProps) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
   const loadHistory = async () => {
-    const res = await fetch("http://127.0.0.1:8000/history");
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/history`);
     const data = await res.json();
     setHistory(data);
   };
