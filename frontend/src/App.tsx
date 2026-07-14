@@ -17,6 +17,7 @@ const [recommendation, setRecommendation] = useState("");
 const [reasons, setReasons] = useState<string[]>([]);
 const [loading, setLoading] = useState(false);
 const [analysisSource, setAnalysisSource] = useState("");
+const [refreshKey, setRefreshKey] = useState(0);
  const analyzeThreat = async () => {
   setLoading(true);
   try {
@@ -40,6 +41,7 @@ const [analysisSource, setAnalysisSource] = useState("");
     setRecommendation(data.recommendation);
     setAnalysisSource(data.analysis_source ?? "");
     setLoading(false);
+    setRefreshKey(prev => prev + 1);
 
   } catch (error) {
     setLoading(false);
@@ -82,7 +84,7 @@ const [analysisSource, setAnalysisSource] = useState("");
         recommendation={recommendation}
         reasons={reasons}
     />
-    <History />
+    <History refreshKey={refreshKey} />
     </>
 )}
       </div>

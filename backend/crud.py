@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 import models
+import json
 
 def create_analysis(db: Session, analysis):
 
@@ -29,6 +30,8 @@ def save_analysis(
     risk: str,
     confidence: str,
     recommendation: str,
+    reason: list[str] | None = None,
+    analysis_source: str | None = None,
 ):
 
     analysis = models.Analysis(
@@ -36,6 +39,8 @@ def save_analysis(
         risk=risk,
         confidence=confidence,
         recommendation=recommendation,
+        reason=json.dumps(reason or []),
+        analysis_source=analysis_source,
     )
 
     db.add(analysis)

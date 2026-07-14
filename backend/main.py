@@ -17,6 +17,7 @@ from typing import List
 
 import models
 import crud
+from schemas import AnalysisResponse
 
 from sqlalchemy.orm import Session
 
@@ -216,6 +217,8 @@ Message:
         risk=result["risk"],
         confidence=result["confidence"],
         recommendation=result["recommendation"],
+        reason=result.get("reason", []),
+        analysis_source=result.get("analysis_source", ""),
     )
 
     return result
@@ -224,7 +227,7 @@ Message:
 # History
 # ----------------------------
 
-@app.get("/history")
+@app.get("/history", response_model=list[AnalysisResponse])
 def history(db: Session = Depends(get_db)):
 
     data = crud.get_analysis(db)

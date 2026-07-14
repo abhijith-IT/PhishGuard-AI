@@ -13,3 +13,7 @@ class Analysis(Base):
     confidence = Column(String)
 
     recommendation = Column(String)
+
+    reason = Column(String, nullable=True)
+
+    analysis_source = Column(String, nullable=True)
