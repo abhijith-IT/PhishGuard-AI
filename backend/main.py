@@ -13,7 +13,7 @@ import json
 import logging
 import time
 from datetime import datetime, timezone
-from typing import List
+from typing import List, TypedDict
 
 import models
 import crud
@@ -59,7 +59,12 @@ GEMINI_MODELS = [
     "gemini-3.5-flash",
     "gemini-2.0-flash",
 ]
-
+class AnalysisResult(TypedDict):
+    risk: str
+    confidence: str
+    recommendation: str
+    reason: list[str]
+    analysis_source: str
 # ----------------------------
 # Gemini Resilient Call
 # ----------------------------
@@ -137,12 +142,15 @@ def call_gemini_with_retry(prompt: str) -> dict | None:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","),
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # ----------------------------
 # Request Model
 # ----------------------------
@@ -201,15 +209,24 @@ Message:
 {request.text}
 """
 
-    result = call_gemini_with_retry(prompt)
+    gemini_result = call_gemini_with_retry(prompt)
 
-    if result is None:
-        result = detect_phishing(request.text)
-        result["analysis_source"] = "Rule-Based Detector"
+    if gemini_result is None:
+        result: AnalysisResult = {
+            "risk": detect_phishing(request.text)["risk"],
+            "confidence": detect_phishing(request.text)["confidence"],
+            "recommendation": detect_phishing(request.text)["recommendation"],
+            "reason": detect_phishing(request.text)["reason"],
+            "analysis_source": "Rule-Based Detector",
+        }
     else:
-        result["analysis_source"] = "Gemini AI"
-
-    # Save to Database
+        result = {
+            "risk": gemini_result.get("risk", "🟠 Medium"),
+            "confidence": gemini_result.get("confidence", "50%"),
+            "recommendation": gemini_result.get("recommendation", "Please check the message details manually."),
+            "reason": gemini_result.get("reason", []),
+            "analysis_source": "Gemini AI",
+        }
 
     crud.save_analysis(
         db=db,
@@ -217,22 +234,18 @@ Message:
         risk=result["risk"],
         confidence=result["confidence"],
         recommendation=result["recommendation"],
-        reason=result.get("reason", []),
-        analysis_source=result.get("analysis_source", ""),
+        reason=result["reason"],
+        analysis_source=result["analysis_source"],
     )
 
     return result
-
 # ----------------------------
 # History
 # ----------------------------
 
 @app.get("/history", response_model=list[AnalysisResponse])
 def history(db: Session = Depends(get_db)):
-
-    data = crud.get_analysis(db)
-
-    return data
+    return crud.get_analysis(db)
 
 # ----------------------------
 # Download Request Model
