@@ -234,7 +234,8 @@ http://localhost:8000/docs
 
 ## Docker
 
-(Add Screenshot)
+<img width="1625" height="902" alt="image" src="https://github.com/user-attachments/assets/f4d32689-864b-41b6-9673-89a322c19df1" />
+
 
 ---
 
