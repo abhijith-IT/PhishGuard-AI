@@ -12,51 +12,58 @@ import DownloadButton from "./components/DownloadButton";
 function App() {
   const [text, setText] = useState("");
   const [risk, setRisk] = useState("");
-const [confidence, setConfidence] = useState("");
-const [recommendation, setRecommendation] = useState("");
-const [reasons, setReasons] = useState<string[]>([]);
-const [loading, setLoading] = useState(false);
-const [analysisSource, setAnalysisSource] = useState("");
-const [refreshKey, setRefreshKey] = useState(0);
- const analyzeThreat = async () => {
-  setLoading(true);
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: text,
-      }),
-    });
+  const [confidence, setConfidence] = useState("");
+  const [recommendation, setRecommendation] = useState("");
+  const [reasons, setReasons] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [analysisSource, setAnalysisSource] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const analyzeThreat = async () => {
+    setLoading(true);
+    // Clear previous state so errors don't re-trigger animations of old data
+    setRisk("");
+    setConfidence("");
+    setReasons([]);
+    setRecommendation("");
+    setAnalysisSource("");
 
-    const data = await response.json();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log(data);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: text,
+        }),
+      });
 
-    setRisk(data.risk);
-    setConfidence(data.confidence);
-    setReasons(data.reason);
-    setRecommendation(data.recommendation);
-    setAnalysisSource(data.analysis_source ?? "");
-    setLoading(false);
-    setRefreshKey(prev => prev + 1);
+      const data = await response.json();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log(data);
 
-  } catch (error) {
-    setLoading(false);
-    console.error(error);
-    alert("Backend not reachable");
-  }
-};
+      setRisk(data.risk);
+      setConfidence(data.confidence);
+      setReasons(data.reason);
+      setRecommendation(data.recommendation);
+      setAnalysisSource(data.analysis_source ?? "");
+      setLoading(false);
+      setRefreshKey(prev => prev + 1);
+
+    } catch (error) {
+      setLoading(false);
+      console.error(error);
+      alert("Backend not reachable");
+    }
+  };
 
   return (
     <div className="container">
       <div className="card">
         <Header />
         <FileUpload
-        onFileRead={setText}
-      />
+          onFileRead={setText}
+        />
 
         <InputBox
           value={text}
@@ -65,31 +72,34 @@ const [refreshKey, setRefreshKey] = useState(0);
 
         <AnalyzeButton
           onClick={analyzeThreat}
+          disabled={loading}
         />
-      <DownloadButton
+        <DownloadButton
           message={text}
           risk={risk}
           confidence={confidence}
           reasons={reasons}
           recommendation={recommendation}
           source={analysisSource}
-      />
-      {loading ? (
-    <Loading />
-) : (
-  <>
-    <ResultCard
-        risk={risk}
-        confidence={confidence}
-        recommendation={recommendation}
-        reasons={reasons}
-    />
-    <History refreshKey={refreshKey} />
-    </>
-)}
+        />
+        {loading ? (
+          <Loading />
+        ) : (
+          <>
+            <ResultCard
+              key={refreshKey}
+              risk={risk}
+              confidence={confidence}
+              recommendation={recommendation}
+              reasons={reasons}
+              analysisSource={analysisSource}
+            />
+            <History refreshKey={refreshKey} />
+          </>
+        )}
       </div>
     </div>
-    
+
   );
 }
 

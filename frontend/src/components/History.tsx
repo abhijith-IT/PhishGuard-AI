@@ -35,14 +35,21 @@ function History({ refreshKey }: HistoryProps) {
           key={item.id}
           style={{
             background: "#1e293b",
-            padding: "15px",
-            borderRadius: "10px",
+            padding: "22px",
+            borderRadius: "14px",
             marginBottom: "15px",
+            boxShadow: "0 6px 18px rgba(0,0,0,.25)",
+            transition: "2s",
+
           }}
         >
           <h3>{item.risk}</h3>
 
-          <p>{item.message}</p>
+          <p>
+            {item.message.length > 160
+              ? item.message.substring(0, 160) + "..."
+              : item.message}
+          </p>
 
           <p>
             <strong>Confidence:</strong> {item.confidence}
@@ -65,6 +72,16 @@ function History({ refreshKey }: HistoryProps) {
           )}
         </div>
       ))}
+      <footer
+        style={{
+          marginTop: "40px",
+          textAlign: "center",
+          color: "#94a3b8",
+          fontSize: "14px",
+        }}
+      >
+        © 2026 PhishGuard AI • IBM SkillsBuild Internship Project
+      </footer>
     </div>
   );
 }

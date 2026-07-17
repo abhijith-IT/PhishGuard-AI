@@ -5,15 +5,13 @@ load_dotenv()  # Must run before any os.getenv() calls
 from fastapi import FastAPI, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
-from google import genai  # type: ignore[import-untyped]
-from google.genai import errors as genai_errors  # type: ignore[import-untyped]
-
+from ai_provider import analyze_with_ai
 import os
 import json
 import logging
 import time
 from datetime import datetime, timezone
-from typing import List, TypedDict
+from typing import List, TypedDict, cast
 
 import models
 import crud
@@ -40,105 +38,19 @@ models.Base.metadata.create_all(bind=engine)
 # Startup Validation
 # ----------------------------
 
-api_key = os.getenv("GEMINI_API_KEY")
+api_key = os.getenv("GROQ_API_KEY")
 
 if not api_key:
     raise RuntimeError(
-        "GEMINI_API_KEY is not set. "
-        "Add it to your .env file: GEMINI_API_KEY=your_key_here"
+        "GROQ_API_KEY is not set."
     )
 
-client = genai.Client(api_key=api_key)
-
-# ----------------------------
-# Gemini Model Priority
-# ----------------------------
-
-GEMINI_MODELS = [
-    "gemini-flash-latest",
-    "gemini-3.5-flash",
-    "gemini-2.0-flash",
-]
 class AnalysisResult(TypedDict):
     risk: str
     confidence: str
     recommendation: str
     reason: list[str]
     analysis_source: str
-# ----------------------------
-# Gemini Resilient Call
-# ----------------------------
-
-def call_gemini_with_retry(prompt: str) -> dict | None:
-
-    for model in GEMINI_MODELS:
-
-        for attempt in range(1, 4):
-
-            logger.info("Gemini attempt %d/3 with model '%s'", attempt, model)
-
-            try:
-
-                response = client.models.generate_content(
-                    model=model,
-                    contents=prompt,
-                )
-
-                text = (response.text or "").strip()
-
-                if text.startswith("```json"):
-                    text = text.replace("```json", "").replace("```", "").strip()
-                elif text.startswith("```"):
-                    text = text.replace("```", "").strip()
-
-                result = json.loads(text)
-
-                logger.info("Gemini success with model '%s'", model)
-
-                return result
-
-            except genai_errors.ServerError as e:
-
-                if e.code == 503:
-
-                    if attempt < 3:
-                        wait = 2 ** attempt
-                        logger.warning(
-                            "Gemini 503 on '%s' attempt %d/3 — retrying in %ds",
-                            model, attempt, wait,
-                        )
-                        time.sleep(wait)
-
-                    else:
-                        logger.warning(
-                            "Gemini '%s' failed after 3 attempts — trying next model",
-                            model,
-                        )
-
-                else:
-                    logger.error(
-                        "Gemini non-retryable server error on '%s': %s",
-                        model, e,
-                    )
-                    break
-
-            except Exception as e:
-                logger.error(
-                    "Gemini non-retryable error on '%s': %s",
-                    model, e,
-                )
-                break
-
-    logger.warning(
-        "All Gemini models failed after retries — "
-        "switching to rule-based detector"
-    )
-
-    return None
-
-# ----------------------------
-# CORS
-# ----------------------------
 
 app.add_middleware(
     CORSMiddleware,
@@ -185,33 +97,49 @@ def home():
 def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
 
     prompt = f"""
-You are an expert cybersecurity analyst.
+You are an expert cybersecurity analyst specializing in phishing detection.
 
-Analyze the following email, SMS, or URL for phishing.
+Analyze the following email, SMS, or URL.
+
+Determine whether it contains:
+- Phishing
+- Scam
+- Credential theft
+- Brand impersonation
+- Fake login pages
+- Suspicious URLs
+- Social engineering
+- Urgency tactics
+- Financial fraud
 
 Return ONLY valid JSON.
 
-Format:
-
 {{
-  "risk": "...",
-  "confidence": "Return a percentage such as 95%, 82%, or 30%",
-  "reason": [
-      "...",
-      "...",
-      "..."
-  ],
-  "recommendation": "..."
+    "risk":"Low | Medium | High",
+    "confidence":"0-100%",
+    "reason":[
+        "...",
+        "...",
+        "..."
+    ],
+    "recommendation":"One clear action the user should take"
 }}
+
+Rules:
+- Give exactly 3 reasons.
+- Confidence must be a percentage.
+- Recommendation must be concise.
+- Do not include markdown.
+- Do not include explanations outside the JSON.
 
 Message:
 
 {request.text}
 """
 
-    gemini_result = call_gemini_with_retry(prompt)
+    ai_result = analyze_with_ai(prompt)
 
-    if gemini_result is None:
+    if ai_result is None:
         result: AnalysisResult = {
             "risk": detect_phishing(request.text)["risk"],
             "confidence": detect_phishing(request.text)["confidence"],
@@ -221,12 +149,12 @@ Message:
         }
     else:
         result = {
-            "risk": gemini_result.get("risk", "🟠 Medium"),
-            "confidence": gemini_result.get("confidence", "50%"),
-            "recommendation": gemini_result.get("recommendation", "Please check the message details manually."),
-            "reason": gemini_result.get("reason", []),
-            "analysis_source": "Gemini AI",
-        }
+    "risk": cast(str, ai_result["risk"]),
+    "confidence": cast(str, ai_result["confidence"]),
+    "recommendation": cast(str, ai_result["recommendation"]),
+    "reason": cast(list[str], ai_result.get("reason", [])),
+    "analysis_source": "Groq AI",
+}
 
     crud.save_analysis(
         db=db,
