@@ -24,15 +24,29 @@ def get_analysis(db: Session):
 
     return db.query(models.Analysis).all()
 
+def delete_all_history(db: Session):
+    try:
+        db.query(models.Analysis).delete()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+
 def save_analysis(
     db: Session,
     message: str,
     risk: str,
     confidence: str,
     recommendation: str,
-    reason: list[str] | None = None,
+    reason: list[dict] | None = None,
     analysis_source: str | None = None,
+    analysis_version: str | None = None,
 ):
+    
+    if analysis_version:
+        source_val = json.dumps({"source": analysis_source, "version": analysis_version})
+    else:
+        source_val = analysis_source
 
     analysis = models.Analysis(
         message=message,
@@ -40,7 +54,7 @@ def save_analysis(
         confidence=confidence,
         recommendation=recommendation,
         reason=json.dumps(reason or []),
-        analysis_source=analysis_source,
+        analysis_source=source_val,
     )
 
     db.add(analysis)

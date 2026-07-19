@@ -1,4 +1,35 @@
-node_modules
-dist
-.git
-Dockerfile
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment
+.env
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# Generated files
+analysis_report.pdf
+
+# Tests
+test_*.py
+.pytest_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
