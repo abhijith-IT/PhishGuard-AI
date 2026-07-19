@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { FaShieldAlt, FaExclamationTriangle, FaCheckCircle, FaInfoCircle, FaExclamationCircle, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { FaShieldAlt, FaExclamationTriangle, FaExclamationCircle, FaCheckCircle, FaInfoCircle, FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 type Finding = {
   text: string;
@@ -11,23 +12,24 @@ type SecurityAssessmentCardProps = {
   isReady: boolean;
 };
 
-export default function SecurityAssessmentCard({ reasons, isReady }: SecurityAssessmentCardProps) {
-  const [expanded, setExpanded] = useState({
-    threats: false,
-    warnings: false,
-    passed: false
-  });
-
-  const toggleSection = (section: keyof typeof expanded) => {
-    setExpanded(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
+export default function SecurityAssessmentCard({
+  reasons,
+  isReady
+}: SecurityAssessmentCardProps) {
+  
   const threats = reasons.filter(r => r.type.toLowerCase() === "critical");
   const warnings = reasons.filter(r => r.type.toLowerCase() === "warning");
-  const passedChecks = reasons.filter(r => {
-    const t = r.type.toLowerCase();
-    return t === "safe" || t === "info";
+  const passed = reasons.filter(r => r.type.toLowerCase() === "safe" || r.type.toLowerCase() === "info");
+
+  const [expanded, setExpanded] = useState({
+    threats: threats.length > 0,
+    warnings: warnings.length > 0,
+    passed: passed.length > 0
   });
+
+  const toggleSection = (key: keyof typeof expanded) => {
+    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const getIcon = (type: string) => {
     const t = type.toLowerCase();
@@ -40,10 +42,10 @@ export default function SecurityAssessmentCard({ reasons, isReady }: SecurityAss
   const renderSection = (
     key: keyof typeof expanded,
     title: string, 
-    icon: JSX.Element, 
+    icon: ReactNode, 
     items: Finding[],
     emptyMessage: string,
-    emptyIcon: JSX.Element,
+    emptyIcon: ReactNode,
     emptyBg: string,
     itemBg: string
   ) => {
@@ -128,7 +130,7 @@ export default function SecurityAssessmentCard({ reasons, isReady }: SecurityAss
           "passed",
           "Passed Security Checks",
           <FaCheckCircle className="text-green-400 w-4 h-4" />,
-          passedChecks,
+          passed,
           "No positive security indicators verified.",
           <FaInfoCircle className="text-slate-500 w-4 h-4" />,
           "bg-slate-800/30 border border-slate-700/30 text-slate-400",
