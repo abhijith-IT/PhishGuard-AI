@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 import json
 
 
@@ -36,6 +36,12 @@ class AnalysisResponse(AnalysisCreate):
 
     class Config:
         from_attributes = True
+
+    @model_validator(mode="after")
+    def populate_attack_type(self):
+        if not self.attack_type and self.validated_attack:
+            self.attack_type = self.validated_attack
+        return self
 
     @field_validator("reason", mode="before")
     @classmethod

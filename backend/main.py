@@ -85,7 +85,7 @@ CRITICAL_ATTACKS = [
 
 HIGH_ATTACKS = [
     "Brand Impersonation", "Delivery Scam", "Invoice Scam",
-    "QR Code Phishing", "Crypto Scam", "Tech Support Scam"
+    "QR Code Phishing", "Crypto Scam", "Tech Support Scam", "Gift Card Scam"
 ]
 
 CRITICAL_INDICATORS = [
@@ -95,7 +95,7 @@ CRITICAL_INDICATORS = [
 
 HIGH_INDICATORS = [
     "brand_impersonation", "suspicious_domain", "external_link",
-    "delivery_scam", "invoice_scam", "crypto_scam"
+    "delivery_scam", "invoice_scam", "crypto_scam", "gift_card_request"
 ]
 
 MEDIUM_INDICATORS = [
@@ -110,18 +110,22 @@ MEDIUM_INDICATORS = [
 # ----------------------------
 
 CORROBORATION_MATRIX = {
+    # ─── High Specificity / High Severity ───
+    "Business Email Compromise": ["business_email_compromise", "wire_transfer_request"],
+    "MFA Phishing": ["mfa_bypass", "credential_request"],
+    "QR Code Phishing": ["external_link"],
+    "Crypto Scam": ["crypto_scam"],
+    "Invoice Scam": ["invoice_scam"],
+    "Gift Card Scam": ["gift_card_request", "unusual_request"],
+    "Delivery Scam": ["delivery_scam"],
+    "Tech Support Scam": ["unusual_request", "fear_tactics", "external_link"],
+    
+    # ─── Broader Categories ───
     "Credential Harvesting": ["credential_request", "fake_login_page", "mfa_bypass"],
     "Malware Delivery": ["malware_delivery"],
     "Financial Fraud": ["wire_transfer_request", "business_email_compromise", "invoice_scam"],
-    "Business Email Compromise": ["business_email_compromise", "wire_transfer_request"],
     "Remote Access Scam": ["unusual_request", "fear_tactics", "external_link"],
-    "MFA Phishing": ["mfa_bypass", "credential_request"],
-    "Brand Impersonation": ["brand_impersonation"],
-    "Delivery Scam": ["delivery_scam"],
-    "Invoice Scam": ["invoice_scam"],
-    "QR Code Phishing": ["external_link"],
-    "Crypto Scam": ["crypto_scam"],
-    "Tech Support Scam": ["unusual_request", "fear_tactics", "external_link"],
+    "Brand Impersonation": ["brand_impersonation"]
 }
 
 # ----------------------------
@@ -181,7 +185,15 @@ def _calculate_risk(validated_attack: str, indicators: dict) -> tuple[str, int]:
     if validated_attack == "Suspicious Communication":
         return "Medium", 55
 
-    # No attack but check for medium-severity behavioral indicators
+    # No attack but check for deterministic indicators
+    crit_count = sum(1 for ind in CRITICAL_INDICATORS if indicators.get(ind, False))
+    if crit_count >= 1:
+        return "High", 75 # Downgraded slightly from Critical since no specific attack was verified
+
+    high_count = sum(1 for ind in HIGH_INDICATORS if indicators.get(ind, False))
+    if high_count >= 1:
+        return "Medium", 60
+
     med_count = sum(1 for ind in MEDIUM_INDICATORS if indicators.get(ind, False))
     if med_count >= 1:
         return "Medium", 50
@@ -479,23 +491,36 @@ Message:
         risk = fallback_res["risk"]
         conf = fallback_res["confidence"]
 
+        fallback_attack = None
+        if risk in ["Critical", "High"]:
+            for attack, reqs in CORROBORATION_MATRIX.items():
+                if any(det_indicators.get(req) for req in reqs):
+                    fallback_attack = attack
+                    break
+            if not fallback_attack:
+                fallback_attack = "Suspicious Communication"
+
+        detected_cats = _build_detected_categories(det_indicators, risk)
+        supp_inds = _build_supporting_indicators(det_indicators, risk)
+
         result = {
             "risk": risk,
             "confidence": conf,
             "recommendation": fallback_res["recommendation"],
             "reason": findings,
             "analysis_source": "Rule-Based Detector",
-            "possible_attack": None,
-            "validated_attack": None,
-            "attack_confidence": None,
+            "possible_attack": fallback_attack,
+            "validated_attack": fallback_attack,
+            "attack_confidence": conf if fallback_attack else None,
             "validation_status": "fallback",
             "validation_notes": "AI provider was unavailable. Results are from the rule-based fallback detector.",
             "executive_summary": "AI analysis was unavailable. A basic rule-based scan was performed. Results may be less accurate than AI-powered analysis.",
             "confidence_explanation": f"Classification is based on keyword matching. {len(fallback_reasons)} keyword(s) matched against known phishing patterns.",
-            "detected_categories": ["Rule-Based Scan"],
+            "detected_categories": detected_cats,
+            "supporting_indicators": supp_inds,
             "recommended_actions": [fallback_res["recommendation"]],
             "target_brand": None,
-            "attack_type": None,
+            "attack_type": fallback_attack,
         }
     else:
         # ─── STAGE 1: Extract AI hypothesis ───
@@ -558,6 +583,7 @@ Message:
             "executive_summary": executive_summary,
             "confidence_explanation": confidence_explanation,
             "detected_categories": detected_categories,
+            "supporting_indicators": supporting_indicators,
             "recommended_actions": recommended_actions,
             "target_brand": target_brand,
             "attack_type": validated_attack if validated_attack not in ("None", None) else None, # Alias for backward compatibility
@@ -583,6 +609,7 @@ Message:
         executive_summary=result.get("executive_summary"),  # type: ignore
         confidence_explanation=result.get("confidence_explanation"),  # type: ignore
         detected_categories=result.get("detected_categories"),  # type: ignore
+        supporting_indicators=result.get("supporting_indicators"),  # type: ignore
         recommended_actions=result.get("recommended_actions"),  # type: ignore
         target_brand=result.get("target_brand"),  # type: ignore
     )

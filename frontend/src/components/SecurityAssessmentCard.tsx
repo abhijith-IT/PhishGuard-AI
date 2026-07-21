@@ -26,9 +26,7 @@ export default function SecurityAssessmentCard({
     console.warn(`[DEFENSIVE VALIDATION] Contradictory values: Risk=${risk} but validatedAttack=${validatedAttack}. Rendering safe fallback.`);
   }
 
-  const displayAttack = (r === "low")
-    ? "No Active Threat Detected"
-    : validatedAttack || "No Active Threat Detected";
+  const displayAttack = validatedAttack || ((r === "low") ? "No Active Threat Detected" : "No Active Threat Detected");
 
   const displayIndicators = (r === "low")
     ? ["Standard text analysis passed", "No deceptive patterns found"]

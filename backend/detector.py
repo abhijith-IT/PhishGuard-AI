@@ -1,105 +1,146 @@
+import re
+
+# ---------------------------------------------------------
+# REGEX PATTERNS MAPPED TO MAIN.PY INDICATORS
+# ---------------------------------------------------------
+
+CRITICAL_INDICATORS = [
+    "credential_request", "fake_login_page", "malware_delivery",
+    "mfa_bypass", "business_email_compromise", "wire_transfer_request"
+]
+
+HIGH_INDICATORS = [
+    "brand_impersonation", "suspicious_domain", "external_link",
+    "delivery_scam", "invoice_scam", "crypto_scam", "gift_card_request"
+]
+
+MEDIUM_INDICATORS = [
+    "urgency", "fear_tactics", "generic_greeting",
+    "spoofed_display_name", "unusual_request"
+]
+
+INDICATOR_PATTERNS = {
+    # ─── CRITICAL INDICATORS ───
+    "credential_request": [
+        r'\b(verify|confirm|reset|update|validate|authenticate|provide|reply).{0,30}(password|account|credential|login)\b',
+        r'\b(enter your password|confirm your identity|click here to login)\b'
+    ],
+    "fake_login_page": [
+        r'\b(login|sign in|verify|authenticate)\b.{0,100}https?://'
+    ],
+    "malware_delivery": [
+        r'\.(exe|scr|vbs|bat|cmd|js|jar|wsf|ps1|docm|xlsm)\b'
+    ],
+    "mfa_bypass": [
+        r'\b(enter|provide|verify|share).{0,20}(otp|2fa|mfa|verification code|one time passcode|security code)\b'
+    ],
+    "business_email_compromise": [
+        r'\b(ceo|cfo|president|director|executive)\b.{0,50}\b(urgent|wire|transfer|discreet)\b'
+    ],
+    "wire_transfer_request": [
+        r'\b(wire|bank transfer|swift code|routing number).{0,30}(urgent|immediately|process|funds)\b',
+        r'\b(send funds|transfer money)\b'
+    ],
+
+    # ─── HIGH INDICATORS ───
+    "brand_impersonation": [
+        r'\b(microsoft|apple|amazon|paypal|netflix|chase|wells fargo|dhl|fedex|ups|usps)\b.{0,50}\b(support|account|billing|login|verify|suspend|security|update)\b',
+        r'\b(support|account|billing|login|verify|suspend|security|update)\b.{0,50}\b(microsoft|apple|amazon|paypal|netflix|chase|wells fargo|dhl|fedex|ups|usps)\b'
+    ],
+    "suspicious_domain": [
+        r'https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', # raw_ip_url
+        r'https?://(bit\.ly|tinyurl\.com|t\.co|goo\.gl|ow\.ly|is\.gd|qr\.ae)', # shortened_url
+        r'https?://[a-zA-Z0-9-]+\.(xyz|tk|ru|top|pw|cc)' # mismatched_domain
+    ],
+    "external_link": [
+        r'https?://',
+        r'\b(qr code|scan this code)\b' # qr_code_reference
+    ],
+    "delivery_scam": [
+        r'\b(delivery|package|tracking|shipment|parcel)\b.{0,50}\b(failed|pending|suspended|reschedule|fee)\b'
+    ],
+    "invoice_scam": [
+        r'\b(invoice|receipt|billing|payment).{0,30}(overdue|immediate action|click|verify|pay)\b',
+        r'\b(overdue|immediate action|click|verify|pay).{0,30}(invoice|receipt|billing|payment)\b',
+        r'\b(outstanding balance|payment declined).{0,20}(update|verify)\b'
+    ],
+    "crypto_scam": [
+        r'\b(bitcoin|btc|ethereum|eth|crypto|wallet|deposit address)\b'
+    ],
+    "gift_card_request": [
+        r'\b(gift card|apple card|steam card|google play)\b'
+    ],
+
+    # ─── MEDIUM INDICATORS ───
+    "urgency": [
+        r'\b(urgent(ly)?|immediately|action required|within 24 hours|asap|final notice)\b'
+    ],
+    "fear_tactics": [
+        r'\b(suspen(d|ded|sion)|block(ed)?|close(d)?|terminate(d)?|unauthorized|compromised|legal action|arrest|penalty|restrict(ed)?)\b'
+    ],
+    "generic_greeting": [
+        r'\b(dear customer|dear user|dear member|dear account holder)\b'
+    ],
+    "unusual_request": [
+        r'\b(teamviewer|anydesk|remote desktop|install)\b', # remote_access_request / software_install_request
+        r'\b(reward|winner|prize|claim)\b' # reward_offer
+    ],
+    "spoofed_display_name": [
+        r'\bvia\b.{1,20}(?:mailchimp|sendgrid|mailgun)' # sender_mismatch
+    ]
+}
+
+def extract_deterministic_indicators(text: str) -> dict:
+    """
+    Extracts deterministic evidence using regular expressions.
+    Returns only the exact indicator keys expected by main.py.
+    """
+    text_lower = text.lower()
+    indicators = {}
+
+    for indicator_key, patterns in INDICATOR_PATTERNS.items():
+        for pattern in patterns:
+            if re.search(pattern, text_lower, re.DOTALL):
+                indicators[indicator_key] = True
+                break # Avoid redundant evaluations for the same key
+
+    return indicators
+
 def detect_phishing(text: str):
-
-    text = text.lower()
-
+    """
+    Fallback deterministic detection matching the exact fallback schema in main.py.
+    """
+    indicators = extract_deterministic_indicators(text)
     reasons = []
-
-    phishing_keywords = [
-        "bank",
-        "account",
-        "verify",
-        "password",
-        "otp",
-        "click",
-        "urgent",
-        "login",
-        "confirm",
-        "credit card",
-        "limited time",
-        "winner",
-        "gift card",
-        "security alert"
-    ]
-
-    url_shorteners = [
-        "bit.ly",
-        "tinyurl",
-        "t.co",
-        "goo.gl"
-    ]
-
-    suspicious_domains = [
-        ".ru",
-        ".xyz",
-        ".tk",
-        ".top"
-    ]
-
-    for word in phishing_keywords:
-        if word in text:
-            reasons.append(f"Suspicious keyword detected: {word}")
-
-    for shortener in url_shorteners:
-        if shortener in text:
-            reasons.append(f"Shortened URL detected: {shortener}")
-
-    for domain in suspicious_domains:
-        if domain in text:
-            reasons.append(f"Suspicious domain detected: {domain}")
-
-    if "http://" in text or "https://" in text:
-        reasons.append("Message contains a URL")
-
-    score = len(reasons)
-
-    if score >= 5:
+    
+    crit_count = sum(1 for ind in CRITICAL_INDICATORS if indicators.get(ind))
+    high_count = sum(1 for ind in HIGH_INDICATORS if indicators.get(ind))
+    med_count = sum(1 for ind in MEDIUM_INDICATORS if indicators.get(ind))
+    
+    for ind, active in indicators.items():
+        if active:
+            reasons.append(f"Detected suspicious pattern: {ind.replace('_', ' ').title()}")
+            
+    if crit_count > 0:
+        risk = "Critical"
+        confidence = 95
+        recommendation = "Do NOT interact with this message. Report immediately."
+    elif high_count > 0:
         risk = "High"
-        confidence = 98
-        recommendation = "Do NOT click any links. Delete the message immediately."
-
-    elif score >= 2:
+        confidence = 80
+        recommendation = "Do NOT click any links. Verify the sender."
+    elif med_count > 0:
         risk = "Medium"
-        confidence = 72
+        confidence = 50
         recommendation = "Verify the sender before taking any action."
-
     else:
         risk = "Low"
-        confidence = 25
+        confidence = 10
         recommendation = "No obvious phishing indicators detected."
-
+        
     return {
         "risk": risk,
         "confidence": confidence,
         "reason": reasons,
         "recommendation": recommendation
     }
-
-def extract_deterministic_indicators(text: str) -> dict:
-    text = text.lower()
-    indicators = {}
-    
-    # Critical
-    if any(w in text for w in ["password", "otp", "login", "credential"]):
-        indicators["credential_request"] = True
-    if any(w in text for w in ["wire", "transfer", "bank", "account"]):
-        indicators["wire_transfer_request"] = True
-        
-    # High
-    if any(w in text for w in ["amazon", "paypal", "microsoft", "apple"]):
-        indicators["brand_impersonation"] = True
-    if "http://" in text or "https://" in text:
-        indicators["external_link"] = True
-    if "invoice" in text:
-        indicators["invoice_scam"] = True
-    if any(w in text for w in ["delivery", "package", "tracking"]):
-        indicators["delivery_scam"] = True
-    if any(w in text for w in ["bitcoin", "crypto", "wallet"]):
-        indicators["crypto_scam"] = True
-        
-    # Medium
-    if any(w in text for w in ["urgent", "limited time", "immediately", "alert"]):
-        indicators["urgency"] = True
-    if any(w in text for w in ["suspend", "block", "close", "unauthorized"]):
-        indicators["fear_tactics"] = True
-        
-    return indicators
