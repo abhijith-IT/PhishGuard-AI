@@ -1,33 +1,27 @@
-import { useEffect, useState } from "react";
-import { FaShieldAlt, FaTrash } from "react-icons/fa";
-
-type Finding = {
-  text: string;
-  type: string;
-};
-
-type HistoryItem = {
-  id: number;
-  message: string;
-  risk: string;
-  confidence: string;
-  reason: Finding[];
-  analysis_source?: string;
-  analysis_version?: string;
-};
+import { useState, useMemo, useRef } from "react";
+import { FaShieldAlt, FaTrash, FaSearch, FaFilter, FaCalendarAlt, FaThumbtack, FaExchangeAlt } from "react-icons/fa";
+import { useSharedHistory, type HistoryItem } from "../context/HistoryContext";
+import ComparisonModal from "./ComparisonModal";
 
 type HistoryProps = {
-  refreshKey: number;
   onSelect?: (item: HistoryItem) => void;
   selectedId?: number | null;
   onNewAnalysis?: () => void;
 };
 
-function History({ refreshKey, onSelect, selectedId, onNewAnalysis }: HistoryProps) {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
+  const { history, pinnedIds, togglePin, deleteAnalysis, clearAllHistory } = useSharedHistory();
+  
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [isClearing, setIsClearing] = useState(false);
-  const [localRefreshKey, ] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [riskFilter, setRiskFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState("All");
+  
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedToCompare, setSelectedToCompare] = useState<number[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
+  
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const getIconForType = (type: string) => {
     const normalizedType = type?.trim().toLowerCase() || "info";
@@ -50,7 +44,6 @@ function History({ refreshKey, onSelect, selectedId, onNewAnalysis }: HistoryPro
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         );
-      case "info":
       default:
         return (
           <svg className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,47 +53,39 @@ function History({ refreshKey, onSelect, selectedId, onNewAnalysis }: HistoryPro
     }
   };
 
-  const loadHistory = async () => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/history`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setHistory(data);
-    } catch {
-      console.error("Failed to fetch history");
-    }
-  };
-
-  const clearHistory = async () => {
-    setIsClearing(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/history`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setHistory([]);
-        setShowClearConfirm(false);
+  const filteredHistory = useMemo(() => {
+    let filtered = history.filter(item => {
+      const matchesSearch = item.message.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRisk = riskFilter === "All" || item.risk.toLowerCase().includes(riskFilter.toLowerCase());
+      
+      let matchesDate = true;
+      if (dateFilter !== "All" && item.timestamp) {
+        const itemDate = new Date(item.timestamp);
+        const today = new Date();
+        if (dateFilter === "Today") {
+          matchesDate = itemDate.toDateString() === today.toDateString();
+        } else if (dateFilter === "Past Week") {
+          const weekAgo = new Date();
+          weekAgo.setDate(today.getDate() - 7);
+          matchesDate = itemDate >= weekAgo;
+        }
       }
-    } catch {
-      console.error("Failed to clear history");
-    } finally {
-      setIsClearing(false);
-    }
-  };
+      return matchesSearch && matchesRisk && matchesDate;
+    });
 
-  useEffect(() => {
-    loadHistory();
-  }, [refreshKey, localRefreshKey]);
+    // Sort: Pinned first, then by ID (assuming ID reflects time)
+    return filtered.sort((a, b) => {
+      const aPinned = pinnedIds.includes(a.id);
+      const bPinned = pinnedIds.includes(b.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return b.id - a.id;
+    });
+  }, [history, searchTerm, riskFilter, dateFilter, pinnedIds]);
 
   if (history.length === 0) {
     return (
       <div className="space-y-4 fade-in-slide mt-8">
-        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 mb-4">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Recent Analyses
-        </h2>
         <div className="glass-panel py-16 px-6 rounded-3xl flex flex-col items-center justify-center text-center relative overflow-hidden group">
            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors"></div>
            <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mb-6 shadow-xl animate-bounce-slow">
@@ -124,127 +109,201 @@ function History({ refreshKey, onSelect, selectedId, onNewAnalysis }: HistoryPro
   }
 
   return (
-    <div className="space-y-4 fade-in-slide relative">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Recent Analyses
-        </h2>
-        <button
-          onClick={() => setShowClearConfirm(true)}
-          className="text-xs font-medium text-slate-400 hover:text-red-400 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
-        >
-          <FaTrash className="w-3 h-3" />
-          Clear History
-        </button>
+    <div className="space-y-6 fade-in-slide relative h-full flex flex-col">
+      {/* Control Bar */}
+      <div className="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row gap-4 items-center justify-between shrink-0">
+        <div className="relative w-full sm:w-64">
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+          <input 
+            type="text" 
+            placeholder="Search messages..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-900/50 border border-slate-700 text-slate-200 text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-500"
+          />
+        </div>
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative group">
+            <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-3 h-3" />
+            <select 
+              value={riskFilter} 
+              onChange={(e) => setRiskFilter(e.target.value)}
+              className="appearance-none bg-slate-900/50 border border-slate-700 text-slate-300 text-sm rounded-lg pl-8 pr-8 py-2.5 focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value="All">All Risks</option>
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          
+          <div className="relative group">
+            <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-3 h-3" />
+            <select 
+              value={dateFilter} 
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="appearance-none bg-slate-900/50 border border-slate-700 text-slate-300 text-sm rounded-lg pl-8 pr-8 py-2.5 focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value="All">All Time</option>
+              <option value="Today">Today</option>
+              <option value="Past Week">Past Week</option>
+            </select>
+          </div>
+          
+          <button
+            onClick={() => {
+              setCompareMode(!compareMode);
+              setSelectedToCompare([]);
+            }}
+            className={`p-2.5 rounded-lg border transition-all flex items-center gap-2 ${compareMode ? 'bg-blue-500/20 text-blue-400 border-blue-500/50' : 'bg-slate-900/50 text-slate-400 border-slate-700 hover:border-slate-500'}`}
+            title="Compare Mode"
+          >
+            <FaExchangeAlt className="w-4 h-4" />
+            <span className="text-xs font-medium hidden sm:inline">Compare</span>
+          </button>
+          
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="p-2.5 text-slate-400 hover:text-red-400 bg-slate-900/50 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 rounded-lg transition-all"
+            title="Clear History"
+          >
+            <FaTrash className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {showClearConfirm && (
-        <div className="absolute top-0 right-0 mt-8 z-10 bg-slate-800 border border-red-500/30 rounded-xl p-4 shadow-2xl animate-slide-up max-w-sm">
-          <h4 className="text-slate-200 font-bold text-sm mb-2">Clear Analysis History?</h4>
-          <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            This will permanently remove all saved analyses. This action cannot be undone.
-          </p>
-          <div className="flex gap-2 justify-end">
+        <div className="bg-slate-800 border border-red-500/30 rounded-xl p-4 shadow-2xl animate-slide-up flex flex-col sm:flex-row items-center justify-between shrink-0">
+          <div>
+            <h4 className="text-slate-200 font-bold text-sm mb-1">Clear All History?</h4>
+            <p className="text-slate-400 text-xs">This will permanently remove all saved analyses.</p>
+          </div>
+          <div className="flex gap-3 mt-3 sm:mt-0">
             <button
               onClick={() => setShowClearConfirm(false)}
-              disabled={isClearing}
-              className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
-              onClick={clearHistory}
-              disabled={isClearing}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors flex items-center gap-2"
+              onClick={() => {
+                clearAllHistory();
+                setShowClearConfirm(false);
+              }}
+              className="px-4 py-2 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors flex items-center gap-2"
             >
-              {isClearing ? "Clearing..." : "Clear History"}
+              Confirm Clear
             </button>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 max-h-[600px] overflow-y-auto custom-scrollbar pr-2 pb-4">
-        {history.map((item) => {
-          const normalizedRisk = item.risk.trim().toLowerCase();
-          let riskColor = "text-slate-400 bg-slate-500/10 border-slate-500/20 shadow-[0_0_10px_rgba(100,116,139,0.1)]";
+      <div ref={scrollRef} className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4 space-y-4">
+        {filteredHistory.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-slate-500 text-sm">No analysis matches your filters.</p>
+          </div>
+        ) : (
+          filteredHistory.map((item) => {
+            const normalizedRisk = item.risk.trim().toLowerCase();
+            let riskColor = "text-slate-400 bg-slate-500/10 border-slate-500/20";
+            if (normalizedRisk === "low") riskColor = "text-green-400 bg-green-500/10 border-green-500/20";
+            else if (normalizedRisk.includes("medium")) riskColor = "text-yellow-400 bg-yellow-500/10 border-yellow-500/20";
+            else if (normalizedRisk === "high") riskColor = "text-orange-400 bg-orange-500/10 border-orange-500/20";
+            else if (normalizedRisk === "critical") riskColor = "text-red-400 bg-red-500/10 border-red-500/20";
 
-          if (normalizedRisk === "low") {
-            riskColor = "text-green-400 bg-green-500/10 border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.1)]";
-          } else if (normalizedRisk === "low-medium") {
-            riskColor = "text-blue-400 bg-blue-500/10 border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.1)]";
-          } else if (normalizedRisk === "medium") {
-            riskColor = "text-yellow-400 bg-yellow-500/10 border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.1)]";
-          } else if (normalizedRisk === "high") {
-            riskColor = "text-orange-400 bg-orange-500/10 border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]";
-          } else if (normalizedRisk === "critical") {
-            riskColor = "text-red-400 bg-red-500/10 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]";
-          }
+            const isPinned = pinnedIds.includes(item.id);
+            const isSelectedForCompare = selectedToCompare.includes(item.id);
 
-          return (
-            <div
-              key={item.id}
-              onClick={() => onSelect && onSelect(item)}
-              className={`glass-card flex flex-col gap-3 group cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${
-                selectedId === item.id ? "ring-2 ring-blue-500 bg-slate-800/80 border-blue-500/50" : ""
-              }`}
-              tabIndex={0}
-              role="button"
-              aria-pressed={selectedId === item.id}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect && onSelect(item);
-                }
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${riskColor}`}>
-                  {item.risk}
-                </span>
-                <div className="flex items-center gap-2 text-[11px] font-medium text-slate-500">
-                  <span>Score: {item.confidence}</span>
-                  {item.analysis_source && (
-                    <>
-                      <span className="text-slate-700">•</span>
-                      <span className="text-slate-400">{item.analysis_source}</span>
-                    </>
-                  )}
-                  {item.analysis_version && (
-                    <span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[9px] border border-slate-700">
-                      v{item.analysis_version}
+            return (
+              <div
+                key={item.id}
+                className={`glass-card p-5 group flex flex-col gap-3 relative transition-all duration-300 cursor-pointer ${
+                  compareMode 
+                    ? isSelectedForCompare 
+                      ? "ring-2 ring-blue-500 bg-slate-800/80 border-blue-500/50" 
+                      : "opacity-60 hover:opacity-100"
+                    : selectedId === item.id 
+                      ? "ring-2 ring-blue-500 bg-slate-800/80 border-blue-500/50" 
+                      : ""
+                }`}
+                onClick={() => {
+                  if (compareMode) {
+                    if (isSelectedForCompare) {
+                      setSelectedToCompare(prev => prev.filter(id => id !== item.id));
+                    } else if (selectedToCompare.length < 2) {
+                      setSelectedToCompare(prev => [...prev, item.id]);
+                    }
+                  } else {
+                    onSelect && onSelect(item);
+                  }
+                }}
+              >
+                {/* Actions overlay */}
+                <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); togglePin(item.id); }} 
+                    className={`p-2 rounded-md transition-colors ${isPinned ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'}`}
+                    title={isPinned ? "Unpin" : "Pin to top"}
+                  >
+                    <FaThumbtack className="w-3 h-3" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); deleteAnalysis(item.id); }} 
+                    className="p-2 rounded-md bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                    title="Delete"
+                  >
+                    <FaTrash className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-3 pr-20">
+                  <div className="flex items-center gap-3">
+                    {isPinned && <FaThumbtack className="text-blue-500 w-3 h-3 transform rotate-45 shrink-0" />}
+                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${riskColor}`}>
+                      {item.risk}
                     </span>
+                    <span className="text-slate-500 text-[11px] font-medium">{item.timestamp || "Archived"}</span>
+                  </div>
+
+                  <p className="text-slate-300 text-[13px] leading-relaxed font-mono line-clamp-2 bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/50">
+                    {item.message}
+                  </p>
+
+                  {item.reason && item.reason.length > 0 && (
+                    <ul className="space-y-1.5 mt-1">
+                      {item.reason.slice(0, 2).map((r, i) => (
+                        <li key={i} className="text-slate-400 text-xs flex items-start gap-2">
+                          {getIconForType(r.type)}
+                          <span className="line-clamp-1">{r.text}</span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               </div>
-
-              <p className="text-slate-300 text-[13px] leading-relaxed font-mono line-clamp-2 bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/50 selection:bg-blue-500/30">
-                {item.message}
-              </p>
-
-              {item.reason && item.reason.length > 0 && (
-                <ul className="space-y-1.5 mt-1">
-                  {item.reason.slice(0, 2).map((r, i) => (
-                    <li key={i} className="text-slate-400 text-xs flex items-start gap-2">
-                      {getIconForType(r.type)}
-                      <span className="line-clamp-1">{r.text}</span>
-                    </li>
-                  ))}
-                  {item.reason.length > 2 && (
-                    <li className="text-blue-400 text-xs italic ml-5 mt-1 font-medium hover:text-blue-300 cursor-default">+ {item.reason.length - 2} more reasons detected</li>
-                  )}
-                </ul>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
-      
-      <footer className="mt-8 pt-6 border-t border-slate-800/50 text-center text-slate-600 text-[11px] font-medium tracking-wide">
-        © 2026 PhishGuard AI • IBM SkillsBuild Internship Project
-      </footer>
+
+      {compareMode && selectedToCompare.length === 2 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+           <button onClick={() => setShowComparison(true)} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-bold shadow-[0_0_20px_rgba(37,99,235,0.4)] flex items-center gap-2">
+             Compare 2 Analyses
+           </button>
+        </div>
+      )}
+
+      {showComparison && selectedToCompare.length === 2 && (
+        <ComparisonModal 
+          item1={history.find(h => h.id === selectedToCompare[0])!}
+          item2={history.find(h => h.id === selectedToCompare[1])!}
+          onClose={() => setShowComparison(false)}
+        />
+      )}
     </div>
   );
 }

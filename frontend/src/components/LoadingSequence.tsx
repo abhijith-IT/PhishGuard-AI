@@ -26,7 +26,7 @@ export default function LoadingSequence() {
   }, []);
 
   return (
-    <div className="glass-panel rounded-3xl py-16 px-8 flex flex-col items-center justify-center w-full min-h-[300px]">
+    <div className="glass-panel rounded-3xl py-16 px-8 flex flex-col items-center justify-center w-full min-h-75">
       <div className="w-16 h-16 relative flex items-center justify-center mb-6">
         <div className="absolute inset-0 rounded-full border-t-2 border-blue-500 animate-spin"></div>
         <div className="absolute inset-2 rounded-full border-r-2 border-indigo-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>

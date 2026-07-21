@@ -1,141 +1,111 @@
-import type { ReactNode } from "react";
-import { useState } from "react";
-import { FaShieldAlt, FaExclamationTriangle, FaExclamationCircle, FaCheckCircle, FaInfoCircle, FaChevronDown, FaChevronUp } from "react-icons/fa";
-
-type Finding = {
-  text: string;
-  type: string;
-};
+import { FaSearch, FaCheck, FaCrosshairs, FaBrain, FaExclamationTriangle } from "react-icons/fa";
 
 type SecurityAssessmentCardProps = {
-  reasons: Finding[];
+  risk: string;
+  validatedAttack: string | null;
+  supportingIndicators: string[];
+  confidenceExplanation: string | null;
+  recommendedActions: string[];
   isReady: boolean;
 };
 
 export default function SecurityAssessmentCard({
-  reasons,
+  risk,
+  validatedAttack,
+  supportingIndicators,
+  confidenceExplanation,
+  recommendedActions,
   isReady
 }: SecurityAssessmentCardProps) {
-  
-  const threats = reasons.filter(r => r.type.toLowerCase() === "critical");
-  const warnings = reasons.filter(r => r.type.toLowerCase() === "warning");
-  const passed = reasons.filter(r => r.type.toLowerCase() === "safe" || r.type.toLowerCase() === "info");
 
-  const [expanded, setExpanded] = useState({
-    threats: threats.length > 0,
-    warnings: warnings.length > 0,
-    passed: passed.length > 0
-  });
+  const r = risk.trim().toLowerCase();
+  const isSafe = r === "low" || (!validatedAttack && supportingIndicators.length === 0);
 
-  const toggleSection = (key: keyof typeof expanded) => {
-    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  // DEFENSIVE VALIDATION: Log if impossible combinations arrive
+  if (r === "low" && validatedAttack && validatedAttack !== "Suspicious Communication") {
+    console.warn(`[DEFENSIVE VALIDATION] Contradictory values: Risk=${risk} but validatedAttack=${validatedAttack}. Rendering safe fallback.`);
+  }
 
-  const getIcon = (type: string) => {
-    const t = type.toLowerCase();
-    if (t === "critical") return <FaExclamationTriangle className="text-red-500 mt-0.5 shrink-0" />;
-    if (t === "warning") return <FaExclamationCircle className="text-orange-400 mt-0.5 shrink-0" />;
-    if (t === "safe") return <FaCheckCircle className="text-green-400 mt-0.5 shrink-0" />;
-    return <FaInfoCircle className="text-blue-400 mt-0.5 shrink-0" />;
-  };
+  const displayAttack = (r === "low")
+    ? "No Active Threat Detected"
+    : validatedAttack || "No Active Threat Detected";
 
-  const renderSection = (
-    key: keyof typeof expanded,
-    title: string, 
-    icon: ReactNode, 
-    items: Finding[],
-    emptyMessage: string,
-    emptyIcon: ReactNode,
-    emptyBg: string,
-    itemBg: string
-  ) => {
-    const isExpanded = expanded[key];
-    
-    return (
-      <div className="bg-slate-800/20 border border-slate-700/50 rounded-2xl overflow-hidden transition-all duration-300">
-        <button 
-          onClick={() => toggleSection(key)}
-          className="w-full flex items-center justify-between p-4 hover:bg-slate-800/40 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            {icon}
-            <span className="text-sm font-semibold text-slate-300">{title}</span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-xs text-slate-400 font-medium">
-              {items.length}
-            </span>
-          </div>
-          <div className="text-slate-500">
-            {isExpanded ? <FaChevronUp className="w-3.5 h-3.5" /> : <FaChevronDown className="w-3.5 h-3.5" />}
-          </div>
-        </button>
-        
-        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"}`}>
-          <div className="p-4 pt-0 border-t border-slate-700/30">
-            {items.length > 0 ? (
-              <ul className="space-y-2 mt-3">
-                {items.map((finding, idx) => (
-                  <li key={`${key}-${idx}`} className={`flex items-start gap-3 p-3 rounded-xl border ${itemBg}`}>
-                    {getIcon(finding.type)}
-                    <span className="text-slate-300 text-sm leading-relaxed">{finding.text}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className={`p-3 mt-3 rounded-xl flex items-center gap-2 ${emptyBg}`}>
-                {emptyIcon}
-                <span className="text-sm opacity-90">{emptyMessage}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const displayIndicators = (r === "low")
+    ? ["Standard text analysis passed", "No deceptive patterns found"]
+    : supportingIndicators.length > 0
+      ? supportingIndicators
+      : ["No specific indicators triggered"];
+
+  const displayConfidence = confidenceExplanation || "Classification is based on automated analysis.";
+
+  const displayActions = (r === "low")
+    ? ["Proceed with normal operations.", "Monitor for future anomalies."]
+    : recommendedActions.length > 0
+      ? recommendedActions
+      : ["Exercise caution with this message."];
 
   return (
-    <div className={`glass-panel p-6 rounded-3xl relative overflow-hidden h-full flex flex-col min-h-[420px] ${isReady ? "fade-in-slide" : ""}`} style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
-      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl"></div>
+    <div className={`glass-panel p-6 sm:p-8 rounded-2xl relative flex flex-col h-full ${isReady ? "fade-in-slide" : ""}`} style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
+      <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl"></div>
       
-      <div className="flex items-center gap-3 border-b border-slate-700/50 pb-4 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center border border-slate-700">
-          <FaShieldAlt className="w-5 h-5 text-slate-300" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-200 tracking-tight">Security Assessment</h2>
+      {/* Report Header */}
+      <div className="flex items-center gap-3 border-b border-slate-700/50 pb-5 shrink-0">
+        <FaSearch className="w-5 h-5 text-blue-400" />
+        <h2 className="text-xl font-bold text-slate-100 tracking-tight">Detection Summary</h2>
       </div>
 
-      <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
-        {renderSection(
-          "threats",
-          "Threats Detected",
-          <FaExclamationTriangle className="text-red-500 w-4 h-4" />,
-          threats,
-          "No critical threats detected.",
-          <FaCheckCircle className="text-green-400 w-4 h-4" />,
-          "bg-green-500/5 border border-green-500/10 text-green-400",
-          "bg-red-500/5 border border-red-500/20"
-        )}
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 mt-6 space-y-8">
+        
+        {/* SECTION 1: PRIMARY ATTACK */}
+        <section className="space-y-3">
+           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-800 pb-2">
+             <FaCrosshairs className="text-slate-400" /> Primary Attack
+           </h3>
+           <p className={`text-lg font-bold ${isSafe ? 'text-green-400' : 'text-red-400'}`}>
+             {displayAttack}
+           </p>
+        </section>
 
-        {renderSection(
-          "warnings",
-          "Warnings",
-          <FaExclamationCircle className="text-orange-400 w-4 h-4" />,
-          warnings,
-          "No warnings to display.",
-          <FaCheckCircle className="text-green-400 w-4 h-4" />,
-          "bg-green-500/5 border border-green-500/10 text-green-400",
-          "bg-orange-500/5 border border-orange-500/20"
-        )}
+        {/* SECTION 2: SUPPORTING INDICATORS */}
+        <section className="space-y-3">
+           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
+             Supporting Indicators
+           </h3>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+             {displayIndicators.map((indicator, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                   <FaCheck className={`w-3 h-3 ${isSafe ? 'text-green-500/70' : 'text-red-400'}`} />
+                   <span className="text-xs font-medium text-slate-300">{indicator}</span>
+                </div>
+             ))}
+           </div>
+        </section>
 
-        {renderSection(
-          "passed",
-          "Passed Security Checks",
-          <FaCheckCircle className="text-green-400 w-4 h-4" />,
-          passed,
-          "No positive security indicators verified.",
-          <FaInfoCircle className="text-slate-500 w-4 h-4" />,
-          "bg-slate-800/30 border border-slate-700/30 text-slate-400",
-          "bg-slate-800/30 border border-slate-700/30"
-        )}
+        {/* SECTION 3: CONFIDENCE */}
+        <section className="space-y-3">
+           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-800 pb-2">
+             <FaBrain className="text-slate-400" /> Confidence
+           </h3>
+           <p className="text-sm text-slate-300 leading-relaxed">
+             {displayConfidence}
+           </p>
+        </section>
+
+        {/* SECTION 4: RECOMMENDED RESPONSE */}
+        <section className="space-y-3">
+           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-800 pb-2">
+             <FaExclamationTriangle className="text-slate-400" /> Recommended Response
+           </h3>
+           <div className="flex flex-col gap-2 pt-1">
+             {displayActions.map((action, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0"></div>
+                   <span className="text-sm text-slate-200">{action}</span>
+                </div>
+             ))}
+           </div>
+        </section>
+
       </div>
     </div>
   );

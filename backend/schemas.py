@@ -1,58 +1,41 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 import json
+
 
 class Finding(BaseModel):
     text: str
     type: str
 
+
 class AnalysisCreate(BaseModel):
     message: str
     risk: str
-    confidence: str
-    evidence_score: int | None = None
+    confidence: int
     recommendation: str
     reason: list[Finding] = Field(default_factory=list)
     analysis_source: str | None = None
+    analysis_version: str | None = None
+    timestamp: str | None = None
+    processing_time: int | None = None
+    possible_attack: str | None = None
+    validated_attack: str | None = None
+    attack_confidence: int | None = None
+    validation_status: str | None = None
+    validation_notes: str | None = None
+    executive_summary: str | None = None
+    confidence_explanation: str | None = None
+    detected_categories: list[str] = Field(default_factory=list)
+    supporting_indicators: list[str] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+    target_brand: str | None = None
+    attack_type: str | None = None  # API-level alias for backward compatibility
 
-from typing import Any
 
 class AnalysisResponse(AnalysisCreate):
     id: int
-    analysis_version: str | None = None
 
     class Config:
         from_attributes = True
-
-    @field_validator("analysis_source", mode="before")
-    @classmethod
-    def deserialize_source(cls, v):
-        if isinstance(v, str) and v.startswith("{"):
-            try:
-                parsed = json.loads(v)
-                return parsed.get("source", v)
-            except:
-                return v
-        return v
-        
-    @model_validator(mode="before")
-    @classmethod
-    def extract_version(cls, data: Any):
-        if hasattr(data, '__dict__'):
-            data_dict = {k: getattr(data, k) for k in data.__table__.columns.keys()}
-        elif isinstance(data, dict):
-            data_dict = data.copy()
-        else:
-            data_dict = dict(data)
-            
-        source = data_dict.get("analysis_source")
-        if isinstance(source, str) and source.startswith("{"):
-            try:
-                parsed = json.loads(source)
-                data_dict["analysis_version"] = parsed.get("version")
-                # We don't overwrite analysis_source here, the field_validator does it
-            except:
-                pass
-        return data_dict
 
     @field_validator("reason", mode="before")
     @classmethod
@@ -71,7 +54,7 @@ class AnalysisResponse(AnalysisCreate):
                 return parsed
             except (json.JSONDecodeError, TypeError):
                 return []
-        
+
         if isinstance(v, list):
             res = []
             for item in v:
@@ -80,5 +63,35 @@ class AnalysisResponse(AnalysisCreate):
                 else:
                     res.append(item)
             return res
-            
+
+        return v or []
+
+    @field_validator("detected_categories", mode="before")
+    @classmethod
+    def deserialize_detected_categories(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
+
+    @field_validator("supporting_indicators", mode="before")
+    @classmethod
+    def deserialize_supporting_indicators(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
+
+    @field_validator("recommended_actions", mode="before")
+    @classmethod
+    def deserialize_recommended_actions(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return []
         return v or []
