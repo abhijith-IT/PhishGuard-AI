@@ -1,9 +1,10 @@
 import { FaSearch, FaCheck, FaCrosshairs, FaBrain, FaExclamationTriangle } from "react-icons/fa";
+import type { SupportingIndicator } from "../context/HistoryContext";
 
 type SecurityAssessmentCardProps = {
   risk: string;
   validatedAttack: string | null;
-  supportingIndicators: string[];
+  supportingIndicators: SupportingIndicator[];
   confidenceExplanation: string | null;
   recommendedActions: string[];
   isReady: boolean;
@@ -29,10 +30,13 @@ export default function SecurityAssessmentCard({
   const displayAttack = validatedAttack || ((r === "low") ? "No Active Threat Detected" : "No Active Threat Detected");
 
   const displayIndicators = (r === "low")
-    ? ["Standard text analysis passed", "No deceptive patterns found"]
+    ? [
+        { indicator: "Standard text analysis passed", matched_text: ["System checks OK"] },
+        { indicator: "No deceptive patterns found", matched_text: ["Content appears safe"] }
+      ]
     : supportingIndicators.length > 0
       ? supportingIndicators
-      : ["No specific indicators triggered"];
+      : [{ indicator: "No specific indicators triggered", matched_text: ["No patterns matched"] }];
 
   const displayConfidence = confidenceExplanation || "Classification is based on automated analysis.";
 
@@ -69,14 +73,33 @@ export default function SecurityAssessmentCard({
            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
              Supporting Indicators
            </h3>
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-             {displayIndicators.map((indicator, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                   <FaCheck className={`w-3 h-3 ${isSafe ? 'text-green-500/70' : 'text-red-400'}`} />
-                   <span className="text-xs font-medium text-slate-300">{indicator}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+             {displayIndicators.map((item, idx) => (
+                <div key={idx} className="flex flex-col gap-1 bg-slate-800/30 p-2 rounded-lg border border-slate-700/30">
+                   <div className="flex items-center gap-2">
+                     <FaCheck className={`w-3 h-3 ${isSafe ? 'text-green-500/70' : 'text-red-400'}`} />
+                     <span className="text-sm font-medium text-slate-200">{item.indicator}</span>
+                   </div>
+                   <div className="flex flex-col gap-1 pl-5 mt-1">
+                     {item.matched_text.length > 0 ? (
+                       <>
+                         <span className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Matched:</span>
+                         <ul className="pl-1 space-y-1">
+                           {item.matched_text.map((text, i) => (
+                             <li key={i} className="flex items-start gap-2">
+                               <span className="text-slate-500 text-xs mt-0.5">•</span>
+                               <span className="text-xs text-slate-400 italic wrap-break-word">{text}</span>
+                             </li>
+                           ))}
+                         </ul>
+                       </>
+                     ) : (
+                       <span className="text-xs text-slate-500 italic">(No deterministic phrase matched)</span>
+                     )}
+                   </div>
                 </div>
              ))}
-           </div>
+            </div>
         </section>
 
         {/* SECTION 3: CONFIDENCE */}

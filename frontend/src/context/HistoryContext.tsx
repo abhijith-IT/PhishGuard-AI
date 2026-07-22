@@ -6,6 +6,11 @@ export type Finding = {
   weight?: number;
 };
 
+export type SupportingIndicator = {
+  indicator: string;
+  matched_text: string[];
+};
+
 export type HistoryItem = {
   id: number;
   message: string;
@@ -25,6 +30,7 @@ export type HistoryItem = {
   executive_summary?: string;
   confidence_explanation?: string;
   detected_categories?: string[];
+  supporting_indicators?: SupportingIndicator[];
   recommended_actions?: string[];
   target_brand?: string;
 };

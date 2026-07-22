@@ -11,16 +11,16 @@ type HistoryProps = {
 
 function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
   const { history, pinnedIds, togglePin, deleteAnalysis, clearAllHistory } = useSharedHistory();
-  
+
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
-  
+
   const [compareMode, setCompareMode] = useState(false);
   const [selectedToCompare, setSelectedToCompare] = useState<number[]>([]);
   const [showComparison, setShowComparison] = useState(false);
-  
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const getIconForType = (type: string) => {
@@ -57,7 +57,7 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
     let filtered = history.filter(item => {
       const matchesSearch = item.message.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesRisk = riskFilter === "All" || item.risk.toLowerCase().includes(riskFilter.toLowerCase());
-      
+
       let matchesDate = true;
       if (dateFilter !== "All" && item.timestamp) {
         const itemDate = new Date(item.timestamp);
@@ -87,22 +87,22 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
     return (
       <div className="space-y-4 fade-in-slide mt-8">
         <div className="glass-panel py-16 px-6 rounded-3xl flex flex-col items-center justify-center text-center relative overflow-hidden group">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors"></div>
-           <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mb-6 shadow-xl animate-bounce-slow">
-             <FaShieldAlt className="w-8 h-8 text-blue-400" />
-           </div>
-           <h3 className="text-slate-200 font-bold text-lg mb-2">No Analysis History Yet</h3>
-           <p className="text-slate-400 text-sm max-w-md leading-relaxed mb-8">
-             Your completed phishing analyses will appear here. Start by analyzing an email, URL, or uploaded file to build your threat intelligence history.
-           </p>
-           {onNewAnalysis && (
-             <button
-               onClick={onNewAnalysis}
-               className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)]"
-             >
-               New Analysis
-             </button>
-           )}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors"></div>
+          <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mb-6 shadow-xl animate-bounce-slow">
+            <FaShieldAlt className="w-8 h-8 text-blue-400" />
+          </div>
+          <h3 className="text-slate-200 font-bold text-lg mb-2">No Analysis History Yet</h3>
+          <p className="text-slate-400 text-sm max-w-md leading-relaxed mb-8">
+            Your completed phishing analyses will appear here. Start by analyzing an email, URL, or uploaded file to build your threat intelligence history.
+          </p>
+          {onNewAnalysis && (
+            <button
+              onClick={onNewAnalysis}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+            >
+              New Analysis
+            </button>
+          )}
         </div>
       </div>
     );
@@ -114,20 +114,20 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
       <div className="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row gap-4 items-center justify-between shrink-0">
         <div className="relative w-full sm:w-64">
           <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-          <input 
-            type="text" 
-            placeholder="Search messages..." 
+          <input
+            type="text"
+            placeholder="Search messages..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-slate-900/50 border border-slate-700 text-slate-200 text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-500"
           />
         </div>
-        
+
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative group">
             <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-3 h-3" />
-            <select 
-              value={riskFilter} 
+            <select
+              value={riskFilter}
               onChange={(e) => setRiskFilter(e.target.value)}
               className="appearance-none bg-slate-900/50 border border-slate-700 text-slate-300 text-sm rounded-lg pl-8 pr-8 py-2.5 focus:outline-none focus:border-blue-500 cursor-pointer"
             >
@@ -138,11 +138,11 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
               <option value="Low">Low</option>
             </select>
           </div>
-          
+
           <div className="relative group">
             <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-3 h-3" />
-            <select 
-              value={dateFilter} 
+            <select
+              value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               className="appearance-none bg-slate-900/50 border border-slate-700 text-slate-300 text-sm rounded-lg pl-8 pr-8 py-2.5 focus:outline-none focus:border-blue-500 cursor-pointer"
             >
@@ -151,7 +151,7 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
               <option value="Past Week">Past Week</option>
             </select>
           </div>
-          
+
           <button
             onClick={() => {
               setCompareMode(!compareMode);
@@ -163,7 +163,7 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
             <FaExchangeAlt className="w-4 h-4" />
             <span className="text-xs font-medium hidden sm:inline">Compare</span>
           </button>
-          
+
           <button
             onClick={() => setShowClearConfirm(true)}
             className="p-2.5 text-slate-400 hover:text-red-400 bg-slate-900/50 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 rounded-lg transition-all"
@@ -220,15 +220,14 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
             return (
               <div
                 key={item.id}
-                className={`glass-card p-5 group flex flex-col gap-3 relative transition-all duration-300 cursor-pointer ${
-                  compareMode 
-                    ? isSelectedForCompare 
-                      ? "ring-2 ring-blue-500 bg-slate-800/80 border-blue-500/50" 
-                      : "opacity-60 hover:opacity-100"
-                    : selectedId === item.id 
-                      ? "ring-2 ring-blue-500 bg-slate-800/80 border-blue-500/50" 
-                      : ""
-                }`}
+                className={`glass-card p-5 group flex flex-col gap-3 relative transition-all duration-300 cursor-pointer ${compareMode
+                  ? isSelectedForCompare
+                    ? "ring-2 ring-blue-500 bg-slate-800/80 border-blue-500/50"
+                    : "opacity-60 hover:opacity-100"
+                  : selectedId === item.id
+                    ? "ring-2 ring-blue-500 bg-slate-800/80 border-blue-500/50"
+                    : ""
+                  }`}
                 onClick={() => {
                   if (compareMode) {
                     if (isSelectedForCompare) {
@@ -243,15 +242,15 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
               >
                 {/* Actions overlay */}
                 <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); togglePin(item.id); }} 
+                  <button
+                    onClick={(e) => { e.stopPropagation(); togglePin(item.id); }}
                     className={`p-2 rounded-md transition-colors ${isPinned ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'}`}
                     title={isPinned ? "Unpin" : "Pin to top"}
                   >
                     <FaThumbtack className="w-3 h-3" />
                   </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); deleteAnalysis(item.id); }} 
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteAnalysis(item.id); }}
                     className="p-2 rounded-md bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
                     title="Delete"
                   >
@@ -291,14 +290,14 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
 
       {compareMode && selectedToCompare.length === 2 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
-           <button onClick={() => setShowComparison(true)} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-bold shadow-[0_0_20px_rgba(37,99,235,0.4)] flex items-center gap-2">
-             Compare 2 Analyses
-           </button>
+          <button onClick={() => setShowComparison(true)} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-bold shadow-[0_0_20px_rgba(37,99,235,0.4)] flex items-center gap-2">
+            Compare 2 Analyses
+          </button>
         </div>
       )}
 
       {showComparison && selectedToCompare.length === 2 && (
-        <ComparisonModal 
+        <ComparisonModal
           item1={history.find(h => h.id === selectedToCompare[0])!}
           item2={history.find(h => h.id === selectedToCompare[1])!}
           onClose={() => setShowComparison(false)}

@@ -85,7 +85,8 @@ CRITICAL_ATTACKS = [
 
 HIGH_ATTACKS = [
     "Brand Impersonation", "Delivery Scam", "Invoice Scam",
-    "QR Code Phishing", "Crypto Scam", "Tech Support Scam", "Gift Card Scam"
+    "QR Code Phishing", "Crypto Scam", "Tech Support Scam", "Gift Card Scam",
+    "Payment Fraud", "HR Recruitment Scam"
 ]
 
 CRITICAL_INDICATORS = [
@@ -95,12 +96,13 @@ CRITICAL_INDICATORS = [
 
 HIGH_INDICATORS = [
     "brand_impersonation", "suspicious_domain", "external_link",
-    "delivery_scam", "invoice_scam", "crypto_scam", "gift_card_request"
+    "delivery_scam", "invoice_scam", "crypto_scam", "gift_card_request",
+    "remote_access_request", "payment_fraud", "recruitment_scam"
 ]
 
 MEDIUM_INDICATORS = [
     "urgency", "fear_tactics", "generic_greeting",
-    "spoofed_display_name", "unusual_request"
+    "spoofed_display_name", "unusual_request", "confidentiality_request"
 ]
 
 # ----------------------------
@@ -111,7 +113,7 @@ MEDIUM_INDICATORS = [
 
 CORROBORATION_MATRIX = {
     # ─── High Specificity / High Severity ───
-    "Business Email Compromise": ["business_email_compromise", "wire_transfer_request"],
+    "Business Email Compromise": ["business_email_compromise", "wire_transfer_request", "confidentiality_request"],
     "MFA Phishing": ["mfa_bypass", "credential_request"],
     "QR Code Phishing": ["external_link"],
     "Crypto Scam": ["crypto_scam"],
@@ -123,9 +125,11 @@ CORROBORATION_MATRIX = {
     # ─── Broader Categories ───
     "Credential Harvesting": ["credential_request", "fake_login_page", "mfa_bypass"],
     "Malware Delivery": ["malware_delivery"],
-    "Financial Fraud": ["wire_transfer_request", "business_email_compromise", "invoice_scam"],
-    "Remote Access Scam": ["unusual_request", "fear_tactics", "external_link"],
-    "Brand Impersonation": ["brand_impersonation"]
+    "Financial Fraud": ["wire_transfer_request", "business_email_compromise", "invoice_scam", "payment_fraud"],
+    "Remote Access Scam": ["remote_access_request", "unusual_request", "fear_tactics", "external_link"],
+    "Brand Impersonation": ["brand_impersonation"],
+    "Payment Fraud": ["payment_fraud", "invoice_scam"],
+    "HR Recruitment Scam": ["recruitment_scam"]
 }
 
 # ----------------------------
@@ -282,20 +286,31 @@ def _build_detected_categories(indicators: dict, risk: str) -> list[str]:
     return categories if categories else ["Text Analysis"]
 
 
-def _build_supporting_indicators(indicators: dict, risk: str) -> list[str]:
+def _build_supporting_indicators(indicators: dict, risk: str) -> list[dict]:
     """
     Build the supporting indicators list for the Detection Summary card.
+    Returns a list of dictionaries with indicator name and matched text.
     """
     if risk == "Low":
-        return ["Standard text analysis passed", "No deceptive patterns found"]
+        return []
 
     result = []
     all_indicators = CRITICAL_INDICATORS + HIGH_INDICATORS + MEDIUM_INDICATORS
     for ind in all_indicators:
-        if indicators.get(ind, False):
-            result.append(ind.replace("_", " ").title())
-
-    return result[:6] if result else ["No specific indicators triggered"]
+        val = indicators.get(ind)
+        if val:
+            if isinstance(val, list):
+                matched_texts = val
+            elif isinstance(val, str):
+                matched_texts = [val]
+            else:
+                matched_texts = []
+                
+            result.append({
+                "indicator": ind.replace("_", " ").title(),
+                "matched_text": matched_texts
+            })
+    return result[:6]
 
 
 def _generate_executive_summary(validated_attack: str | None, risk: str, validation_status: str, target_brand: str | None, ai_summary_draft: str | None = None) -> str:
@@ -411,6 +426,7 @@ Medium Severity (Suspicious but could be legitimate):
 - Generic Greeting (e.g., "Dear Customer" instead of a name)
 - Spoofed Display Name (Display name does not match email address domain)
 - Unusual Request (Asking the user to do something out of the ordinary)
+- Confidentiality Request (Asking to keep the communication secret or not to call)
 
 Return ONLY valid JSON. Do not include markdown or text outside the JSON.
 
@@ -435,7 +451,8 @@ Return ONLY valid JSON. Do not include markdown or text outside the JSON.
         "fear_tactics": true | false,
         "generic_greeting": true | false,
         "spoofed_display_name": true | false,
-        "unusual_request": true | false
+        "unusual_request": true | false,
+        "confidentiality_request": true | false
     }},
     "specific_observations": [
         "Observation 1 about the email...",

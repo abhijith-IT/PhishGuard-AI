@@ -6,6 +6,10 @@ class Finding(BaseModel):
     text: str
     type: str
 
+class SupportingIndicator(BaseModel):
+    indicator: str
+    matched_text: list[str]
+
 
 class AnalysisCreate(BaseModel):
     message: str
@@ -25,7 +29,7 @@ class AnalysisCreate(BaseModel):
     executive_summary: str | None = None
     confidence_explanation: str | None = None
     detected_categories: list[str] = Field(default_factory=list)
-    supporting_indicators: list[str] = Field(default_factory=list)
+    supporting_indicators: list[SupportingIndicator] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
     target_brand: str | None = None
     attack_type: str | None = None  # API-level alias for backward compatibility
@@ -87,10 +91,25 @@ class AnalysisResponse(AnalysisCreate):
     def deserialize_supporting_indicators(cls, v):
         if isinstance(v, str):
             try:
-                return json.loads(v)
+                parsed = json.loads(v)
             except (json.JSONDecodeError, TypeError):
                 return []
-        return v or []
+        else:
+            parsed = v or []
+
+        if isinstance(parsed, list):
+            res = []
+            for item in parsed:
+                if isinstance(item, str):
+                    res.append({"indicator": item, "matched_text": ["Legacy string indicator"]})
+                elif isinstance(item, dict):
+                    if "matched_text" in item and isinstance(item["matched_text"], str):
+                        item["matched_text"] = [item["matched_text"]]
+                    res.append(item)
+                else:
+                    res.append(item)
+            return res
+        return []
 
     @field_validator("recommended_actions", mode="before")
     @classmethod

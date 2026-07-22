@@ -14,7 +14,7 @@ import InputSummaryCard from "./components/InputSummaryCard";
 import ThreatAnalysisCard from "./components/ThreatAnalysisCard";
 import SecurityAssessmentCard from "./components/SecurityAssessmentCard";
 import AnalysisMetadata from "./components/AnalysisMetadata";
-import { HistoryProvider, useSharedHistory, type Finding } from "./context/HistoryContext";
+import { HistoryProvider, useSharedHistory, type Finding, type SupportingIndicator } from "./context/HistoryContext";
 
 function AppContent() {
   const { refreshHistory } = useSharedHistory();
@@ -41,7 +41,7 @@ function AppContent() {
   const [executiveSummary, setExecutiveSummary] = useState<string | null>(null);
   const [confidenceExplanation, setConfidenceExplanation] = useState<string | null>(null);
   const [detectedCategories, setDetectedCategories] = useState<string[]>([]);
-  const [supportingIndicators, setSupportingIndicators] = useState<string[]>([]);
+  const [supportingIndicators, setSupportingIndicators] = useState<SupportingIndicator[]>([]);
   const [recommendedActions, setRecommendedActions] = useState<string[]>([]);
 
   const handleDownloadSuccess = () => {
@@ -127,10 +127,15 @@ function AppContent() {
       setRecommendation(data.recommendation);
       setAnalysisSource(data.analysis_source ?? "");
 
-      // Build supporting indicators from reason findings
-      const indicators = (data.reason || [])
-        .filter((r: Finding) => r.type === "critical" || r.type === "warning")
-        .map((r: Finding) => r.text.replace(/ detected$/i, "").trim());
+      // Use backend provided supporting indicators if available, else fallback
+      const indicators = data.supporting_indicators && data.supporting_indicators.length > 0 
+        ? data.supporting_indicators 
+        : (data.reason || [])
+            .filter((r: Finding) => r.type === "critical" || r.type === "warning")
+            .map((r: Finding) => ({
+              indicator: r.text.replace(/ - ".*"$/, "").replace(/ detected$/i, "").trim(),
+              matched_text: ["Legacy indicator"]
+            }));
       setSupportingIndicators(indicators);
       
       const endTime = performance.now();
@@ -149,10 +154,13 @@ function AppContent() {
   };
 
   // Helper to extract supporting indicators from a history item's reasons
-  const extractIndicatorsFromReasons = (reasons: Finding[]): string[] => {
+  const extractIndicatorsFromReasons = (reasons: Finding[]): SupportingIndicator[] => {
     return (reasons || [])
       .filter(r => r.type === "critical" || r.type === "warning")
-      .map(r => r.text.replace(/ detected$/i, "").trim());
+      .map(r => ({
+        indicator: r.text.replace(/ - ".*"$/, "").replace(/ detected$/i, "").trim(),
+        matched_text: ["Legacy indicator"]
+      }));
   };
 
   const renderContent = () => {
@@ -212,7 +220,7 @@ function AppContent() {
                        <SecurityAssessmentCard 
                          risk={selectedHistoryItem.risk || "Unknown"}
                          validatedAttack={selectedHistoryItem.validated_attack || selectedHistoryItem.attack_type || null}
-                         supportingIndicators={extractIndicatorsFromReasons(selectedHistoryItem.reason || [])}
+                         supportingIndicators={selectedHistoryItem.supporting_indicators || extractIndicatorsFromReasons(selectedHistoryItem.reason || [])}
                          confidenceExplanation={selectedHistoryItem.confidence_explanation || null}
                          recommendedActions={selectedHistoryItem.recommended_actions || []}
                          isReady={true}
