@@ -75,7 +75,7 @@ export default function SecurityAssessmentCard({
            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
              {displayIndicators.map((item, idx) => (
-                <div key={idx} className="flex flex-col gap-1 bg-slate-800/30 p-2 rounded-lg border border-slate-700/30">
+                <div key={idx} className="flex flex-col gap-1 bg-slate-800/30 p-2.5 rounded-lg border border-slate-700/30 hover:border-slate-600/50 hover:bg-slate-800/50 hover:shadow-lg transition-all duration-300">
                    <div className="flex items-center gap-2">
                      <FaCheck className={`w-3 h-3 ${isSafe ? 'text-green-500/70' : 'text-red-400'}`} />
                      <span className="text-sm font-medium text-slate-200">{item.indicator}</span>

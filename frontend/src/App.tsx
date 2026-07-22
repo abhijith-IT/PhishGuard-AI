@@ -188,7 +188,8 @@ function AppContent() {
                  <div className="sticky top-0 z-50 bg-[#0B0F19]/90 backdrop-blur-md border-b border-slate-700/50 p-4 mb-6 flex justify-between items-center">
                     <button 
                       onClick={() => setSelectedHistoryItem(null)}
-                      className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors px-4 py-2 bg-slate-800/50 hover:bg-slate-700 rounded-xl font-medium text-sm"
+                      aria-label="Back to History"
+                      className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors px-4 py-2 bg-slate-800/50 hover:bg-slate-700 rounded-xl font-medium text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

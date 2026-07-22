@@ -74,7 +74,7 @@ export default function ThreatAnalysisCard({
              <span className={risk.toLowerCase() === 'critical' ? 'text-red-400' : ''}>{risk.toUpperCase()}</span>
            </div>
            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-             <div className={`h-1.5 rounded-full ${getRiskColor()} transition-all duration-1000`} style={{ width: getRiskWidth() }}></div>
+             <div className={`h-1.5 rounded-full ${getRiskColor()} transition-all duration-1000 ${risk.toLowerCase() === 'critical' ? 'animate-pulse' : ''}`} style={{ width: getRiskWidth() }}></div>
            </div>
         </div>
 

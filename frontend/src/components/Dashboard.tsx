@@ -102,6 +102,27 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       </div>
 
+      {/* Risk Distribution Chart */}
+      {totalAnalyses > 0 && (
+        <div className="glass-panel p-6 rounded-xl">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-bold text-slate-200 tracking-tight">Risk Distribution</h3>
+          </div>
+          <div className="h-3 w-full bg-slate-800 rounded-full flex overflow-hidden shadow-inner">
+            <div className="h-full bg-red-500 hover:bg-red-400 transition-colors" style={{ width: `${(criticalCount / totalAnalyses) * 100}%` }} title={`Critical: ${criticalCount}`}></div>
+            <div className="h-full bg-orange-500 hover:bg-orange-400 transition-colors" style={{ width: `${((highRiskCount - criticalCount) / totalAnalyses) * 100}%` }} title={`High: ${highRiskCount - criticalCount}`}></div>
+            <div className="h-full bg-yellow-500 hover:bg-yellow-400 transition-colors" style={{ width: `${(history.filter(h => h.risk?.includes("Medium")).length / totalAnalyses) * 100}%` }} title={`Medium: ${history.filter(h => h.risk?.includes("Medium")).length}`}></div>
+            <div className="h-full bg-green-500 hover:bg-green-400 transition-colors" style={{ width: `${(history.filter(h => h.risk?.includes("Low")).length / totalAnalyses) * 100}%` }} title={`Low: ${history.filter(h => h.risk?.includes("Low")).length}`}></div>
+          </div>
+          <div className="flex gap-4 mt-3 text-[10px] text-slate-400 font-medium">
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500"></div>Critical</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div>High</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-yellow-500"></div>Medium</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500"></div>Low</div>
+          </div>
+        </div>
+      )}
+
       {/* System Status Bar */}
       <div className="glass-panel p-4 rounded-xl">
         <div className="flex items-center gap-2 flex-wrap justify-between">

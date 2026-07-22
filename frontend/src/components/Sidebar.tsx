@@ -61,7 +61,8 @@ export default function Sidebar({ activeView, setActiveView, closeSidebar }: Sid
           <button
             key={item.id}
             onClick={() => handleNavClick(item.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-sm font-medium ${
+            aria-label={`Navigate to ${item.label}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
               activeView === item.id
                 ? "bg-blue-500/15 text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]"
                 : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent"

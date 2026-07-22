@@ -166,7 +166,8 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
 
           <button
             onClick={() => setShowClearConfirm(true)}
-            className="p-2.5 text-slate-400 hover:text-red-400 bg-slate-900/50 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 rounded-lg transition-all"
+            aria-label="Clear History"
+            className="p-2.5 text-slate-400 hover:text-red-400 bg-slate-900/50 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
             title="Clear History"
           >
             <FaTrash className="w-4 h-4" />
@@ -244,14 +245,16 @@ function History({ onSelect, selectedId, onNewAnalysis }: HistoryProps) {
                 <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => { e.stopPropagation(); togglePin(item.id); }}
-                    className={`p-2 rounded-md transition-colors ${isPinned ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'}`}
+                    aria-label={isPinned ? "Unpin analysis" : "Pin analysis"}
+                    className={`p-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${isPinned ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white'}`}
                     title={isPinned ? "Unpin" : "Pin to top"}
                   >
                     <FaThumbtack className="w-3 h-3" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); deleteAnalysis(item.id); }}
-                    className="p-2 rounded-md bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                    aria-label="Delete analysis"
+                    className="p-2 rounded-md bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                     title="Delete"
                   >
                     <FaTrash className="w-3 h-3" />
