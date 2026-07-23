@@ -16,6 +16,15 @@ def delete_all_history(db: Session):
         raise e
 
 
+def delete_analysis(db: Session, analysis_id: int):
+    try:
+        db.query(models.Analysis).filter(models.Analysis.id == analysis_id).delete()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+
+
 def save_analysis(
     db: Session,
     message: str,

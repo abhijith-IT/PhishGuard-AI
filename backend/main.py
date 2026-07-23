@@ -651,6 +651,11 @@ def clear_history(db: Session = Depends(get_db)):
     crud.delete_all_history(db)
     return {"message": "History cleared successfully"}
 
+@app.delete("/history/{analysis_id}")
+def delete_single_history(analysis_id: int, db: Session = Depends(get_db)):
+    crud.delete_analysis(db, analysis_id)
+    return {"message": f"Analysis {analysis_id} deleted successfully"}
+
 # ----------------------------
 # Download Request Model
 # ----------------------------

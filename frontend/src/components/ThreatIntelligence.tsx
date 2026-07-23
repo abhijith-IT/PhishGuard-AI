@@ -237,19 +237,22 @@ export default function ThreatIntelligence() {
                     const threatHeight = data.total > 0 ? ((data.high + data.critical) / data.total) * 100 : 0;
                     
                     return (
-                      <div key={date} className="flex-1 flex flex-col items-center gap-1.5 group">
-                         <div className="w-full max-w-10 bg-slate-800/20 rounded-t-md relative flex flex-col justify-end overflow-hidden transition-all duration-500 group-hover:bg-slate-700/50" style={{ height: `${totalHeight}%`, minHeight: '8px' }}>
-                            
-                            {/* Stacked bars */}
-                            <div className="w-full bg-red-500/80 transition-all duration-1000 border-b border-slate-900/50" style={{ height: `${threatHeight}%` }}></div>
-                            <div className="w-full bg-yellow-500/80 transition-all duration-1000 border-b border-slate-900/50" style={{ height: `${mediumHeight}%` }}></div>
-                            <div className="w-full bg-slate-700 transition-all duration-1000" style={{ height: `${safeHeight}%` }}></div>
-                            
-                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-slate-200 text-[10px] px-2 py-1 rounded border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 text-center">
-                              <span className="font-bold">{data.total} Total</span><br/>
-                              <span className="text-red-400">{data.high + data.critical} High</span> | <span className="text-yellow-400">{data.medium} Med</span> | <span className="text-slate-400">{data.safe} Safe</span>
-                            </div>
+                      <div key={date} className="flex-1 h-full flex flex-col items-center justify-end gap-1.5 group relative">
+                         <div className="w-full flex-1 relative flex justify-center">
+                             <div className="w-full max-w-10 bg-slate-800/20 rounded-t-md absolute bottom-0 flex flex-col justify-end overflow-hidden transition-all duration-500 group-hover:bg-slate-700/50" style={{ height: `${totalHeight}%`, minHeight: '8px' }}>
+                                
+                                {/* Stacked bars */}
+                                <div className="w-full bg-red-500/80 transition-all duration-1000 border-b border-slate-900/50" style={{ height: `${threatHeight}%` }}></div>
+                                <div className="w-full bg-yellow-500/80 transition-all duration-1000 border-b border-slate-900/50" style={{ height: `${mediumHeight}%` }}></div>
+                                <div className="w-full bg-slate-700 transition-all duration-1000" style={{ height: `${safeHeight}%` }}></div>
+                             </div>
                          </div>
+                         
+                         <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-slate-200 text-[10px] px-2 py-1 rounded border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 text-center">
+                           <span className="font-bold">{data.total} Total</span><br/>
+                           <span className="text-red-400">{data.high + data.critical} High</span> | <span className="text-yellow-400">{data.medium} Med</span> | <span className="text-slate-400">{data.safe} Safe</span>
+                         </div>
+
                          <span className="text-[10px] font-bold text-slate-500">{date}</span>
                       </div>
                     );

@@ -51,24 +51,14 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Local storage for pins and logical deletes
   const [pinnedIds, setPinnedIds] = useState<number[]>(() => {
     const saved = localStorage.getItem("phishguard_pinned");
-    return saved ? JSON.parse(saved) : [];
-  });
-  
-  const [deletedIds, setDeletedIds] = useState<number[]>(() => {
-    const saved = localStorage.getItem("phishguard_deleted");
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
     localStorage.setItem("phishguard_pinned", JSON.stringify(pinnedIds));
   }, [pinnedIds]);
-
-  useEffect(() => {
-    localStorage.setItem("phishguard_deleted", JSON.stringify(deletedIds));
-  }, [deletedIds]);
 
   const loadHistory = async () => {
     setIsLoading(true);
@@ -124,11 +114,17 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const deleteAnalysis = (id: number) => {
-    setDeletedIds(prev => {
-      if (!prev.includes(id)) return [...prev, id];
-      return prev;
-    });
+  const deleteAnalysis = async (id: number) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/history/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setHistory(prev => prev.filter(item => item.id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to delete analysis", err);
+    }
   };
 
   const clearAllHistory = async () => {
@@ -139,7 +135,6 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         setHistory([]);
         setPinnedIds([]);
-        setDeletedIds([]);
       }
     } catch (err) {
       console.error("Failed to clear history", err);
@@ -148,7 +143,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
 
   return (
     <HistoryContext.Provider value={{ 
-      history: history.filter(item => !deletedIds.includes(item.id)), 
+      history, 
       isLoading, 
       pinnedIds, 
       togglePin, 
