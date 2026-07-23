@@ -1,3 +1,4 @@
+from typing import Union
 from dotenv import load_dotenv
 
 load_dotenv(override=True)  # Must run before any os.getenv() calls
@@ -661,7 +662,7 @@ class DownloadRequest(BaseModel):
         description="The original message that was analyzed.",
     )
     risk: str
-    confidence: str
+    confidence: Union[int, float, str]
     reasons: List[str]
     recommendation: str
     source: str
