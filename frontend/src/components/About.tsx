@@ -46,11 +46,8 @@ export default function About() {
             PhishGuard AI was developed as a flagship project for the <strong>IBM SkillsBuild Internship</strong>. It demonstrates the integration of modern web technologies with advanced artificial intelligence to solve real-world cybersecurity challenges. The platform is designed to instantly analyze emails, URLs, and SMS messages to detect sophisticated phishing attempts.
           </p>
           <div className="flex gap-4">
-             <a href="#" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors">
+             <a href="https://github.com/abhijith-IT/PhishGuard-AI" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors">
                <FaGithub /> GitHub Repository
-             </a>
-             <a href="#" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors">
-               <FaExternalLinkAlt className="w-3 h-3" /> IBM SkillsBuild
              </a>
           </div>
         </div>
